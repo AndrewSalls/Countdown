@@ -68,6 +68,8 @@
 
             BigNumbers = big;
             SmallNumbers = small;
+            //TODO: Randomize order of elements from big & small
+
             Operators = operations;
             _selected = new List<int>();
             SelectionAmt = selectionAmount;
