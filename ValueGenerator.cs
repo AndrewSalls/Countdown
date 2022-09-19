@@ -87,16 +87,16 @@
                 //isBig makes position negative
                 if (isBig)
                 {
-                    if (!Selected.Contains(-position))
-                        Selected.Add(-position);
+                    if (!_selected.Contains(-position))
+                        _selected.Add(-position);
                 }
                 else
                 {
-                    if (!Selected.Contains(position))
-                        Selected.Add(position);
+                    if (!_selected.Contains(position))
+                        _selected.Add(position);
                 }
 
-                if (Selected.Count >= SelectionAmt)
+                if (_selected.Count >= SelectionAmt)
                     State = GenerationPhase.RANDOMIZING;
             }
             else
@@ -143,6 +143,7 @@
                         outputSteps.Add(Operators[nextOperation]);
                         outputStepValues.Add(GetNumberAt(unused[nextValue]));
                         output = Operators[nextOperation].Evaluate(output, GetNumberAt(unused[nextValue]));
+                        unused.RemoveAt(nextValue);
                     }
 
                     if (unused.Count == 0)

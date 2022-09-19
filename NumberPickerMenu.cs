@@ -1,14 +1,13 @@
-﻿using System.Diagnostics;
-
-namespace Countdown
+﻿namespace Countdown
 {
     public class NumberPickerMenu<T>
     {
-        public static readonly int SPINNER_TICK_INTERVAL = 100;
+        public static readonly int SPINNER_TICK_INTERVAL = 200;
         public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
         public static readonly int MAX_SMALL_ROW_BUTTON_COUNT = 10;
 
         private readonly TableLayoutPanel _windowContainer;
+        private readonly TableLayoutPanel _stepContainer;
         private readonly Form _window;
 
         private readonly List<Button> _bigNumbers;
@@ -21,6 +20,10 @@ namespace Countdown
         private readonly System.Windows.Forms.Timer _spinnerTicker;
 
         private readonly Button _spinnerStop;
+        private readonly Button _openSteps;
+
+        private readonly TextBox _stepInfo;
+        private readonly Button _stepReturn;
 
         private readonly ValueGenerator<T> _game;
 
@@ -36,6 +39,7 @@ namespace Countdown
                 BackColor = Color.White,
                 ForeColor = Color.Black,
                 Icon = Properties.Resources.CountdownIcon,
+                IsMdiContainer = true,
                 StartPosition = FormStartPosition.CenterScreen,
                 Text = "Countdown - Numbers Round Advanced",
                 Width = (int)Math.Round(width * 0.8),
@@ -67,10 +71,40 @@ namespace Countdown
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
 
+            _stepContainer = new()
+            {
+                RowCount = 4,
+                ColumnCount = 3,
+                BackColor = Color.FromArgb(255, 255, 240),
+                Dock = DockStyle.Fill,
+                Enabled = true,
+                Visible = true
+            };
+            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
+            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
+            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
+            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
+            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80));
+            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+
             _bigNumbers = new();
             _smallNumbers = new();
             _bigNumberContainer = new();
             _smallNumberContainer = new();
+
+            _openSteps = new()
+            {
+                BackColor = Color.LightGoldenrodYellow,
+                Dock = DockStyle.Right,
+                Enabled = false,
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = Color.Black,
+                Text = "Open Solution",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = true
+            };
+            _openSteps.FlatAppearance.BorderSize = 0;
 
             _goalSpinner = new()
             {
@@ -82,7 +116,7 @@ namespace Countdown
                 Visible = true
             };
             _spinnerTicker = new();
-            _spinnerStop = new Button()
+            _spinnerStop = new()
             {
                 BackColor = Color.Red,
                 Dock = DockStyle.Fill,
@@ -93,6 +127,30 @@ namespace Countdown
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
+            _spinnerStop.FlatAppearance.BorderSize = 0;
+
+            _stepInfo = new()
+            {
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Both,
+                TextAlign = HorizontalAlignment.Left,
+                WordWrap = false
+            };
+            _stepReturn = new()
+            {
+                BackColor = Color.LightGoldenrodYellow,
+                Dock = DockStyle.Fill,
+                Enabled = true,
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = Color.Black,
+                Text = "Return",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = true
+            };
+            _stepReturn.FlatAppearance.BorderSize = 0;
 
             InitializePage();
             Application.Run(_window);
@@ -106,23 +164,55 @@ namespace Countdown
             for (int i = 0; i < _game.SmallNumbers.Count; i++)
                 _smallNumbers.Add(CreateButton(i, false));
 
-            _spinnerStop.FlatAppearance.BorderSize = 0;
+            _openSteps.Click += (o, e) =>
+            {
+                _window.Controls.Remove(_windowContainer);
+                _window.Controls.Add(_stepContainer);
+
+            };
+            _stepReturn.Click += (o, e) =>
+            {
+                _window.Controls.Remove(_stepContainer);
+                _window.Controls.Add(_windowContainer);
+            };
 
             _spinnerTicker.Interval = SPINNER_TICK_INTERVAL;
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
-                _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "" : _game.Goal?.ToString();
+                _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.ToString() ?? "GENERATION ERROR";
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
             {
                 _spinnerTicker.Stop();
-                for (int i = 0; i < new Random().Next(1, 5); i++)
+                for (int i = 0; i < new Random().Next(0, 2); i++)
                 {
                     _game.RandomizeGoal();
                     _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "" : _game.Goal?.ToString();
                 }
+
+                _spinnerStop.Enabled = false;
+
+                List<T> stepVals = new();
+                List<Operation<T>> steps = new();
+                _game.GetIntendedSolution(out stepVals, out steps);
+                T calculated = steps[0].Evaluate(stepVals[0], stepVals[1]);
+                T currentVal = calculated;
+                _stepInfo.AppendText(stepVals[0] + " " + steps[0].Symbol + " " + stepVals[1] + " = " + currentVal);
+                _stepInfo.AppendText(Environment.NewLine);
+
+                for (int i = 1; i < steps.Count; i++)
+                {
+                    calculated = steps[i].Evaluate(currentVal, stepVals[i + 1]);
+                    _stepInfo.AppendText(currentVal + " " + steps[i].Symbol + " " + stepVals[i + 1] + " = " + calculated);
+                    if (i < steps.Count - 1)
+                        _stepInfo.AppendText(Environment.NewLine);
+
+                    currentVal = calculated;
+                }
+               
+                    _openSteps.Enabled = true;
             };
 
             _bigNumberContainer = CreateButtonRows(_bigNumbers, MAX_BIG_ROW_BUTTON_COUNT);
@@ -136,6 +226,10 @@ namespace Countdown
             _windowContainer.SetRowSpan(_smallNumberContainer, 1);
             _windowContainer.SetColumnSpan(_smallNumberContainer, 4);
 
+            _windowContainer.Controls.Add(_openSteps, 3, 1);
+            _windowContainer.SetRowSpan(_openSteps, 1);
+            _windowContainer.SetColumnSpan(_openSteps, 1);
+
             _windowContainer.Controls.Add(_goalSpinner, 4, 1);
             _windowContainer.SetRowSpan(_goalSpinner, 1);
             _windowContainer.SetColumnSpan(_goalSpinner, 1);
@@ -143,6 +237,14 @@ namespace Countdown
             _windowContainer.Controls.Add(_spinnerStop, 4, 3);
             _windowContainer.SetRowSpan(_spinnerStop, 1);
             _windowContainer.SetColumnSpan(_spinnerStop, 1);
+
+            _stepContainer.Controls.Add(_stepInfo, 1, 1);
+            _stepContainer.SetRowSpan(_stepInfo, 1);
+            _stepContainer.SetColumnSpan(_stepInfo, 1);
+
+            _stepContainer.Controls.Add(_stepReturn, 1, 2);
+            _stepContainer.SetRowSpan(_stepReturn, 1);
+            _stepContainer.SetColumnSpan(_stepReturn, 1);
 
             _window.Controls.Add(_windowContainer);
             _window.Show();
@@ -184,6 +286,8 @@ namespace Countdown
 
             output.Click += (o, e) =>
             {
+                output.BackColor = ControlPaint.Light(output.BackColor, 0.5F);
+                output.ForeColor = Color.DarkBlue;
                 _game.ChooseNumber(pos, isBig);
                 output.Enabled = false;
 
@@ -191,6 +295,7 @@ namespace Countdown
                 {
                     _bigNumbers.ForEach(b => b.Enabled = false);
                     _smallNumbers.ForEach(b => b.Enabled = false);
+                    _spinnerTicker.Enabled = true;
                     _spinnerTicker.Start();
                 }
             };
