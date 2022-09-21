@@ -1,6 +1,6 @@
 ﻿namespace Countdown
 {
-    public class NumberPickerMenu<T>
+    public class NumberPickerMenu<T> where T : IStringRepresentable<T>
     {
         public static readonly int SPINNER_TICK_INTERVAL = 200;
         public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
@@ -199,7 +199,7 @@
 
                 for (int i = 0; i < steps.Count; i++)
                 {
-                    _stepInfo.AppendText(steps[i].ToString());
+                    _stepInfo.AppendText(steps[i].ToEquationString());
                     _stepInfo.AppendText(Environment.NewLine);
                 }
                

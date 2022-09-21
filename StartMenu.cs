@@ -1,10 +1,12 @@
-﻿namespace Countdown
+﻿using Countdown.ValueImplementations;
+
+namespace Countdown
 {
     public class StartMenu
     {
         public static void Main(string[] _)
         {
-            NumberPickerMenu<int> _1 = new(ValueGenerator<int>.GetDefaultNumberGenerator());
+            NumberPickerMenu<IntValue> _1 = new(ValueGenerator<IntValue>.GetDefaultNumberGenerator());
         }
     }
 }

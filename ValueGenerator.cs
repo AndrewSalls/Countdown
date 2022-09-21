@@ -1,6 +1,8 @@
-﻿namespace Countdown
+﻿using Countdown.ValueImplementations;
+
+namespace Countdown
 {
-    public class ValueGenerator<T>
+    public class ValueGenerator<T> where T : IStringRepresentable<T>
     {
         //https://en.wikipedia.org/wiki/Countdown_(game_show)#Numbers_round
         public static readonly int REPETITIONS = 1000;
@@ -48,17 +50,17 @@
 
         public GenerationPhase State { get; private set; }
 
-        public static ValueGenerator<int> GetDefaultNumberGenerator()
+        public static ValueGenerator<IntValue> GetDefaultNumberGenerator()
         {
-            return new ValueGenerator<int>(
-                new List<int>() { 25, 50, 75, 100 },
-                new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
-                new List<Operation<int>>()
+            return new ValueGenerator<IntValue>(
+                new List<IntValue>() { 25, 50, 75, 100 },
+                new List<IntValue>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+                new List<Operation<IntValue>>()
                 {
-                    new Operation<int>("+", (a, b) => a + b, (a, b) => true),
-                    new Operation<int>("-", (a, b) => a - b, (a, b) => a - b >= 0),
-                    new Operation<int>("*", (a, b) => a * b, (a, b) => true),
-                    new Operation<int>("/", (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
+                    new Operation<IntValue>("+", 1, (a, b) => a + b, (a, b) => true),
+                    new Operation<IntValue>("-", 1, (a, b) => a - b, (a, b) => a - b >= 0),
+                    new Operation<IntValue>("*", 2, (a, b) => a * b, (a, b) => true),
+                    new Operation<IntValue>("/", 2, (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
                 },
                 6, 6, 6);
         }
@@ -206,6 +208,36 @@
                 return false;
 
             throw new InvalidOperationException();
+        }
+
+        public string ConvertToEquation(IReadOnlyList<Operation<T>> steps)
+        {
+            string output = steps[steps.Count - 1].ToExpressionString();
+
+            for(int i = steps.Count - 2; i >= 0; i--)
+            {
+                for(int j = i + 1; j < steps.Count; j++)
+                {
+                    if ((steps[j].LeftValue!.Equals(steps[i].Result) || steps[j].RightValue!.Equals(steps[i].Result)) && steps[i].Priority < steps[j].Priority)
+                    {
+                        output = output.Replace(steps[i].Result!.AsString(), $"({steps[i].ToExpressionString()})");
+                        break;
+                    }
+                }
+            }
+
+            return output + " = " + steps[steps.Count - 1].Result;
+        }
+        public List<Operation<T>> ConvertFromEquation(string equation)
+        {
+            //Find any equations in parenthesis and convert those, and repeat until there are no operations remaining
+            throw new NotImplementedException();
+        }
+
+        private List<Operation<T>> ConvertFromSimpleEquation(string equation)
+        {
+            //Converts equation where the order of operations does not matter
+            throw new NotImplementedException();
         }
 
         public delegate bool VerifyEndState(T val);
