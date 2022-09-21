@@ -158,6 +158,7 @@
 
         private void InitializePage()
         {
+            //TODO: Randomize positions here
             for (int i = 0; i < _game.BigNumbers.Count; i++)
                 _bigNumbers.Add(CreateButton(i, true));
 
@@ -189,27 +190,17 @@
                 for (int i = 0; i < new Random().Next(0, 2); i++)
                 {
                     _game.RandomizeGoal();
-                    _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "" : _game.Goal?.ToString();
+                    _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.ToString() ?? "GENERATION ERROR";
                 }
 
                 _spinnerStop.Enabled = false;
 
-                List<T> stepVals = new();
-                List<Operation<T>> steps = new();
-                _game.GetIntendedSolution(out stepVals, out steps);
-                T calculated = steps[0].Evaluate(stepVals[0], stepVals[1]);
-                T currentVal = calculated;
-                _stepInfo.AppendText(stepVals[0] + " " + steps[0].Symbol + " " + stepVals[1] + " = " + currentVal);
-                _stepInfo.AppendText(Environment.NewLine);
+                var steps = _game.GetIntendedSolution();
 
-                for (int i = 1; i < steps.Count; i++)
+                for (int i = 0; i < steps.Count; i++)
                 {
-                    calculated = steps[i].Evaluate(currentVal, stepVals[i + 1]);
-                    _stepInfo.AppendText(currentVal + " " + steps[i].Symbol + " " + stepVals[i + 1] + " = " + calculated);
-                    if (i < steps.Count - 1)
-                        _stepInfo.AppendText(Environment.NewLine);
-
-                    currentVal = calculated;
+                    _stepInfo.AppendText(steps[i].ToString());
+                    _stepInfo.AppendText(Environment.NewLine);
                 }
                
                     _openSteps.Enabled = true;

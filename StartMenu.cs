@@ -4,7 +4,7 @@
     {
         public static void Main(string[] _)
         {
-            NumberPickerMenu<int> menu = new(ValueGenerator<int>.GetDefaultNumberGenerator());
+            NumberPickerMenu<int> _1 = new(ValueGenerator<int>.GetDefaultNumberGenerator());
         }
     }
 }

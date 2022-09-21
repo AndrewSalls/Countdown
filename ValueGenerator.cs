@@ -1,20 +1,22 @@
 ﻿namespace Countdown
 {
-    //Have to make it so that values can be stored eg. 1 + 2 = 3, 4 + 5 = 9, 3 * 9 = 27
     public class ValueGenerator<T>
     {
-        public static readonly int REPETITIONS = 1000;
         //https://en.wikipedia.org/wiki/Countdown_(game_show)#Numbers_round
+        public static readonly int REPETITIONS = 1000;
+        public static readonly VerifyEndState DEFAULT_VERIFICATION = (t) => true;
         public enum GenerationPhase { SELECTING, RANDOMIZING, EVALUATING, ERROR }
 
         public List<T> BigNumbers { get; private set; }
         public List<T> SmallNumbers { get; private set; }
         public List<Operation<T>> Operators { get; private set; }
         public int SelectionAmt { get; private set; }
+        public int MinUse { get; private set; }
+        public int MaxUse { get; private set; }
 
         private readonly Random _rng;
 
-        public List<int> Selected
+        public List<T> Selected
         {
             get
             {
@@ -25,7 +27,7 @@
             }
             private set => _selected = value;
         }
-        private List<int> _selected;
+        private List<T> _selected;
 
         public T? Goal
         {
@@ -41,7 +43,8 @@
         private T? _goal;
 
         private List<Operation<T>> _steps;
-        private List<T> _stepValues;
+
+        private readonly VerifyEndState _isValidEndState;
 
         public GenerationPhase State { get; private set; }
 
@@ -57,9 +60,9 @@
                     new Operation<int>("*", (a, b) => a * b, (a, b) => true),
                     new Operation<int>("/", (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
                 },
-                6);
+                6, 6, 6);
         }
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int selectionAmount)
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int selectionAmount, int minUse, int maxUse, VerifyEndState verifyEnd)
         {
             if (selectionAmount < 1 || selectionAmount > big.Count + small.Count)
                 throw new ArgumentException("Selection amount is larger than number of possible selections, or is <= 0.");
@@ -71,13 +74,19 @@
             //TODO: Randomize order of elements from big & small
 
             Operators = operations;
-            _selected = new List<int>();
+            _selected = new List<T>();
             SelectionAmt = selectionAmount;
+            MinUse = minUse;
+            MaxUse = maxUse;
+            _isValidEndState = verifyEnd;
 
             Goal = default;
             _steps = new(SelectionAmt - 1);
-            _stepValues = new(SelectionAmt);
             State = GenerationPhase.SELECTING;
+        }
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int selectionAmount, int minUse, int maxUse) : this(big, small, operations, selectionAmount, minUse, maxUse, DEFAULT_VERIFICATION)
+        {
+
         }
 
         public void ChooseNumber(int position, bool isBig)
@@ -86,15 +95,9 @@
             {
                 //isBig makes position negative
                 if (isBig)
-                {
-                    if (!_selected.Contains(-position))
-                        _selected.Add(-position);
-                }
+                    _selected.Add(BigNumbers[position]);
                 else
-                {
-                    if (!_selected.Contains(position))
-                        _selected.Add(position);
-                }
+                    _selected.Add(SmallNumbers[position]);
 
                 if (_selected.Count >= SelectionAmt)
                     State = GenerationPhase.RANDOMIZING;
@@ -107,50 +110,47 @@
         {
             if (State == GenerationPhase.RANDOMIZING || State == GenerationPhase.EVALUATING)
             {
-                List<int> unused;
-                List<T> outputStepValues;
-                List<Operation<T>> outputSteps;
-                T output;
-                int nextValue, nextOperation, overError;
+                List<Operation<T>> outputSteps = new();
+                LinkedList<T> options;
+
+                T left, right;
+                int operationPos, nextValue, errorCount;
 
                 for (int trial = 0; trial < REPETITIONS; trial++)
                 {
-                    unused = new(Selected);
-                    outputSteps = new(unused.Count - 1);
-                    outputStepValues = new(unused.Count);
-                    nextValue = _rng.Next(unused.Count);
-                    output = GetNumberAt(unused[nextValue]);
-                    unused.RemoveAt(nextValue);
+                    outputSteps.Clear();
+                    options = new(_selected);
 
-                    outputStepValues.Add(output);
-
-                    while (unused.Count > 0)
+                    while (options.Count > 1)
                     {
-                        overError = 0;
-                        nextValue = _rng.Next(unused.Count);
+                        errorCount = 0;
+                        nextValue = _rng.Next(options.Count);
+                        left = options.ElementAt(nextValue);
+                        options.Remove(left);
+                        nextValue = _rng.Next(options.Count);
+                        right = options.ElementAt(nextValue);
+                        options.Remove(right);
+
                         do
                         {
-                            nextOperation = _rng.Next(Operators.Count);
-                            if (overError >= REPETITIONS)
-                                break;
-                            overError++;
+                            operationPos = _rng.Next(Operators.Count);
+                            errorCount++;
                         }
-                        while (!Operators[nextOperation].IsEvaluable(output, GetNumberAt(unused[nextValue])));
+                        while (errorCount < REPETITIONS && !Operators[operationPos].IsEvaluable(left, right));
 
-                        if (overError >= REPETITIONS)
+                        if (errorCount >= REPETITIONS)
                             break;
 
-                        outputSteps.Add(Operators[nextOperation]);
-                        outputStepValues.Add(GetNumberAt(unused[nextValue]));
-                        output = Operators[nextOperation].Evaluate(output, GetNumberAt(unused[nextValue]));
-                        unused.RemoveAt(nextValue);
+                        var fixedEvaulation = Operators[operationPos].FixEvaluation(left, right);
+                        outputSteps.Add(fixedEvaulation);
+
+                        options.AddLast(fixedEvaulation.Result!);
                     }
 
-                    if (unused.Count == 0)
+                    if (options.Count == 1 && _isValidEndState(options.First()))
                     {
-                        Goal = output;
+                        Goal = options.First();
                         _steps = outputSteps;
-                        _stepValues = outputStepValues;
                         State = GenerationPhase.EVALUATING;
                         return;
                     }
@@ -162,36 +162,40 @@
                 throw new InvalidOperationException();
         }
 
-        private T GetNumberAt(int pos) => pos < 0 ? BigNumbers[-pos] : SmallNumbers[pos];
-
-        public bool IsValidSolution(List<T> values, List<Operation<T>> forces)
+        public bool IsValidSolution(List<Operation<T>> forces)
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
 
-            T val = values[0];
+            if (MinUse > forces.Count - 1 || forces.Count - 1 > MaxUse)
+                return false;
 
-            for (int i = 1; i < values.Count; i++)
+            LinkedList<T> options = new(Selected);
+
+            foreach(Operation<T> step in forces)
             {
-                if (!forces[i].IsEvaluable(val, values[i]))
+                if (step.LeftValue is null || step.RightValue is null || step.Result is null)
                     return false;
 
-                val = forces[i - 1].Evaluate(val, values[i]);
+                if (options.Contains(step.LeftValue) && options.Contains(step.RightValue) && step.IsEvaluable(step.LeftValue, step.RightValue) && step.Evaluate(step.LeftValue, step.RightValue)!.Equals(step.Result))
+                {
+                    options.Remove(step.LeftValue);
+                    options.Remove(step.RightValue);
+                    options.AddLast(step.Result);
+                }
+                else
+                    return false;
             }
 
-            if (val == null)
-                return Goal == null;
-
-            return val.Equals(Goal);
+            return options.First()!.Equals(Goal);
         }
 
-        public void GetIntendedSolution(out List<T> stepValues, out List<Operation<T>> steps)
+        public IReadOnlyList<Operation<T>> GetIntendedSolution()
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
 
-            stepValues = new(_stepValues);
-            steps = new(_steps);
+            return _steps.AsReadOnly();
         }
 
         public bool FoundValidSolution()
@@ -203,5 +207,7 @@
 
             throw new InvalidOperationException();
         }
+
+        public delegate bool VerifyEndState(T val);
     }
 }
