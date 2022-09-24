@@ -204,7 +204,7 @@
                     _stepInfo.AppendText(Environment.NewLine);
                 }
                 _stepInfo.AppendText(Environment.NewLine);
-                _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString());
+                _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString() + " = " + steps[steps.Count - 1].Result!.AsString());
                
                     _openSteps.Enabled = true;
             };

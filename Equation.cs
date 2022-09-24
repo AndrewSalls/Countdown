@@ -48,7 +48,7 @@
             foreach (Operation<T> step in steps)
             {
                 int leftSubIndex = subSteps.FindIndex(e => e.Operation.Result!.IsEquivalentTo(step.LeftValue));
-                int rightSubIndex = subSteps.FindLastIndex(e => e.Operation.Result!.IsEquivalentTo(step.LeftValue));
+                int rightSubIndex = subSteps.FindLastIndex(e => e.Operation.Result!.IsEquivalentTo(step.RightValue));
 
                 if (rightSubIndex == leftSubIndex)
                     rightSubIndex = -1;
