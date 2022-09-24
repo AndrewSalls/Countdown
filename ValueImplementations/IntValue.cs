@@ -13,6 +13,14 @@
 
         public IntValue FromString(string value) => int.Parse(value);
 
+        public bool IsEquivalentTo(IntValue? val)
+        {
+            if (val is null)
+                return false;
+
+            return val.Value == this.Value;
+        }
+
         public static implicit operator IntValue(int val) => new(val);
         public static implicit operator int(IntValue iVal) => iVal.Value;
     }

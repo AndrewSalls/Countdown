@@ -23,7 +23,7 @@
             Result = default;
             Priority = priority;
         }
-        public Operation(string symbol, int priority, Evaluation eval, Verification verify) : this(symbol, priority, eval, verify, (a, b) => $"{a.AsString()} {symbol} {b.AsString()}")
+        public Operation(string symbol, int priority, Evaluation eval, Verification verify) : this(symbol, priority, eval, verify, (a, b) => $"{a} {symbol} {b}")
         {
         }
 
@@ -45,22 +45,26 @@
         public delegate T Evaluation(T a, T b);
         public delegate bool Verification(T a, T b);
 
-        public delegate string ToStringSymbol(T a, T b);
+        public delegate string ToStringSymbol(string a, string b);
 
         public string ToEquationString()
         {
             if (LeftValue is null || RightValue is null || Result is null)
                 throw new InvalidOperationException("Part of equation is null.");
 
-            return display(LeftValue, RightValue) + " = " + Result;
+            return display(LeftValue.AsString(), RightValue.AsString()) + " = " + Result.AsString();
         }
 
         public string ToExpressionString()
         {
-            if (LeftValue is null || RightValue is null || Result is null)
+            if (LeftValue is null || RightValue is null)
                 throw new InvalidOperationException("Part of expression is null.");
 
-            return display(LeftValue, RightValue);
+            return display(LeftValue.AsString(), RightValue.AsString());
         }
+
+        public string ToExpressionString(T left, T right) => display(left.AsString(), right.AsString());
+
+        public string ArbitraryExpressionString(string left, string right) => display(left, right);
     }
 }

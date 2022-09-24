@@ -1,4 +1,5 @@
 ﻿using Countdown.ValueImplementations;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Countdown
 {
@@ -16,7 +17,7 @@ namespace Countdown
         public int MinUse { get; private set; }
         public int MaxUse { get; private set; }
 
-        private readonly Random _rng;
+        private static readonly Random _rng;
 
         public List<T> Selected
         {
@@ -64,15 +65,31 @@ namespace Countdown
                 },
                 6, 6, 6);
         }
+
+        static ValueGenerator()
+        {
+            _rng = new Random();
+        }
+        private static void ShuffleValues(List<T> vals)
+        {
+            int n = vals.Count;
+
+            while (n > 1)
+            {
+                int k = _rng.Next(n--);
+                (vals[k], vals[n]) = (vals[n], vals[k]);
+            }
+        }
+
         public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int selectionAmount, int minUse, int maxUse, VerifyEndState verifyEnd)
         {
             if (selectionAmount < 1 || selectionAmount > big.Count + small.Count)
                 throw new ArgumentException("Selection amount is larger than number of possible selections, or is <= 0.");
 
-            _rng = new Random();
-
-            BigNumbers = big;
-            SmallNumbers = small;
+            BigNumbers = new(big);
+            SmallNumbers = new(small);
+            ShuffleValues(BigNumbers);
+            ShuffleValues(SmallNumbers);
             //TODO: Randomize order of elements from big & small
 
             Operators = operations;
@@ -179,7 +196,7 @@ namespace Countdown
                 if (step.LeftValue is null || step.RightValue is null || step.Result is null)
                     return false;
 
-                if (options.Contains(step.LeftValue) && options.Contains(step.RightValue) && step.IsEvaluable(step.LeftValue, step.RightValue) && step.Evaluate(step.LeftValue, step.RightValue)!.Equals(step.Result))
+                if (options.Contains(step.LeftValue) && options.Contains(step.RightValue) && step.IsEvaluable(step.LeftValue, step.RightValue) && step.Evaluate(step.LeftValue, step.RightValue)!.IsEquivalentTo(step.Result))
                 {
                     options.Remove(step.LeftValue);
                     options.Remove(step.RightValue);
@@ -189,7 +206,7 @@ namespace Countdown
                     return false;
             }
 
-            return options.First()!.Equals(Goal);
+            return options.First()!.IsEquivalentTo(Goal);
         }
 
         public IReadOnlyList<Operation<T>> GetIntendedSolution()
@@ -208,36 +225,6 @@ namespace Countdown
                 return false;
 
             throw new InvalidOperationException();
-        }
-
-        public string ConvertToEquation(IReadOnlyList<Operation<T>> steps)
-        {
-            string output = steps[steps.Count - 1].ToExpressionString();
-
-            for(int i = steps.Count - 2; i >= 0; i--)
-            {
-                for(int j = i + 1; j < steps.Count; j++)
-                {
-                    if ((steps[j].LeftValue!.Equals(steps[i].Result) || steps[j].RightValue!.Equals(steps[i].Result)) && steps[i].Priority < steps[j].Priority)
-                    {
-                        output = output.Replace(steps[i].Result!.AsString(), $"({steps[i].ToExpressionString()})");
-                        break;
-                    }
-                }
-            }
-
-            return output + " = " + steps[steps.Count - 1].Result;
-        }
-        public List<Operation<T>> ConvertFromEquation(string equation)
-        {
-            //Find any equations in parenthesis and convert those, and repeat until there are no operations remaining
-            throw new NotImplementedException();
-        }
-
-        private List<Operation<T>> ConvertFromSimpleEquation(string equation)
-        {
-            //Converts equation where the order of operations does not matter
-            throw new NotImplementedException();
         }
 
         public delegate bool VerifyEndState(T val);

@@ -128,6 +128,7 @@
                 Visible = true
             };
             _spinnerStop.FlatAppearance.BorderSize = 0;
+            _spinnerStop.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
             _stepInfo = new()
             {
@@ -151,6 +152,7 @@
                 Visible = true
             };
             _stepReturn.FlatAppearance.BorderSize = 0;
+            _stepReturn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
             InitializePage();
             Application.Run(_window);
@@ -158,7 +160,6 @@
 
         private void InitializePage()
         {
-            //TODO: Randomize positions here
             for (int i = 0; i < _game.BigNumbers.Count; i++)
                 _bigNumbers.Add(CreateButton(i, true));
 
@@ -181,7 +182,7 @@
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
-                _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.ToString() ?? "GENERATION ERROR";
+                _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
@@ -190,7 +191,7 @@
                 for (int i = 0; i < new Random().Next(0, 2); i++)
                 {
                     _game.RandomizeGoal();
-                    _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.ToString() ?? "GENERATION ERROR";
+                    _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
                 }
 
                 _spinnerStop.Enabled = false;
@@ -202,6 +203,8 @@
                     _stepInfo.AppendText(steps[i].ToEquationString());
                     _stepInfo.AppendText(Environment.NewLine);
                 }
+                _stepInfo.AppendText(Environment.NewLine);
+                _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString());
                
                     _openSteps.Enabled = true;
             };
@@ -254,13 +257,15 @@
                 ForeColor = Color.White,
                 Margin = new Padding(0),
                 Padding = new Padding(0),
+                TabStop = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
             output.FlatAppearance.BorderSize = 0;
+            output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
             if (isBig)
             {
-                string? v = _game.BigNumbers[pos]?.ToString();
+                string? v = _game.BigNumbers[pos]?.AsString();
                 if (v == null)
                     throw new NullReferenceException();
 
@@ -268,7 +273,7 @@
             }
             else
             {
-                string? v = _game.SmallNumbers[pos]?.ToString();
+                string? v = _game.SmallNumbers[pos]?.AsString();
                 if (v == null)
                     throw new NullReferenceException();
 
