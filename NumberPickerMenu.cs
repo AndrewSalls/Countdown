@@ -5,20 +5,38 @@
         public static readonly int SPINNER_TICK_INTERVAL = 200;
         public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
         public static readonly int MAX_SMALL_ROW_BUTTON_COUNT = 10;
+        public static readonly string STOP_TEXT_WORDS = "STOP!";
+        public static readonly Color BACKGROUND = Color.FromArgb(255, 255, 240);
+        public static readonly Color STEPS_BACKGROUND = Color.LightGoldenrodYellow;
+        public static readonly Color SPINNER_BACKGROUND = Color.Black;
+        public static readonly Color RESET_BACKGROUND = Color.DarkCyan;
+        public static readonly Color RESET_TEXT = Color.Black;
+        public static readonly Color STOP_PRE_BACKGROUND = Color.Red;
+        public static readonly Color STOP_POST_BACKGROUND = Color.Goldenrod;
+        public static readonly Color SPINNER_TEXT = Color.Yellow;
+        public static readonly Color PLAIN_TEXT = Color.Black;
+        public static readonly Color INFO_BACKGROUND = Color.White;
+        public static readonly Color INFO_TEXT = Color.Black;
+        public static readonly Color BUTTON_BACKGROUND = Color.DarkBlue;
+        public static readonly Color BUTTON_TEXT = Color.White;
+        public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.5F);
+        public static readonly Color CLICKED_BUTTON_TEXT = Color.DarkBlue;
+        public static readonly Color BUTTON_BACKGROUND_BACKGROUND = Color.LightBlue;
 
         private readonly TableLayoutPanel _windowContainer;
         private readonly TableLayoutPanel _stepContainer;
         private readonly Form _window;
 
-        private readonly List<Button> _bigNumbers;
-        private readonly List<Button> _smallNumbers;
+        private readonly List<Button> _bigValues;
+        private readonly List<Button> _smallValues;
 
-        private TableLayoutPanel _bigNumberContainer;
-        private TableLayoutPanel _smallNumberContainer;
+        private TableLayoutPanel _bigValueContainer;
+        private TableLayoutPanel _smallValueContainer;
 
         private readonly Label _goalSpinner;
         private readonly System.Windows.Forms.Timer _spinnerTicker;
 
+        private readonly Button _reset;
         private readonly Button _spinnerStop;
         private readonly Button _openSteps;
 
@@ -50,7 +68,7 @@
             {
                 RowCount = 9,
                 ColumnCount = 6,
-                BackColor = Color.FromArgb(255, 255, 240),
+                BackColor = BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 Visible = true
@@ -75,7 +93,7 @@
             {
                 RowCount = 4,
                 ColumnCount = 3,
-                BackColor = Color.FromArgb(255, 255, 240),
+                BackColor = BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 Visible = true
@@ -88,18 +106,18 @@
             _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80));
             _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
 
-            _bigNumbers = new();
-            _smallNumbers = new();
-            _bigNumberContainer = new();
-            _smallNumberContainer = new();
+            _bigValues = new();
+            _smallValues = new();
+            _bigValueContainer = new();
+            _smallValueContainer = new();
 
             _openSteps = new()
             {
-                BackColor = Color.LightGoldenrodYellow,
+                BackColor = STEPS_BACKGROUND,
                 Dock = DockStyle.Right,
                 Enabled = false,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.Black,
+                ForeColor = PLAIN_TEXT,
                 Text = "Open Solution",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
@@ -108,32 +126,47 @@
 
             _goalSpinner = new()
             {
-                BackColor = Color.Black,
+                BackColor = SPINNER_BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
-                ForeColor = Color.Yellow,
+                ForeColor = SPINNER_TEXT,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
             _spinnerTicker = new();
             _spinnerStop = new()
             {
-                BackColor = Color.Red,
+                BackColor = STOP_PRE_BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = false,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.Black,
-                Text = "STOP!",
+                ForeColor = PLAIN_TEXT,
+                Text = STOP_TEXT_WORDS,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
             _spinnerStop.FlatAppearance.BorderSize = 0;
             _spinnerStop.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
+            _reset = new()
+            {
+                BackColor = RESET_BACKGROUND,
+                Dock = DockStyle.Fill,
+                Enabled = true,
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = RESET_TEXT,
+                Text = "Reset",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = true
+            };
+            _reset.FlatAppearance.BorderSize = 0;
+            _reset.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
+
             _stepInfo = new()
             {
-                BackColor = Color.White,
+                BackColor = INFO_BACKGROUND,
                 Dock = DockStyle.Fill,
+                ForeColor = INFO_TEXT,
                 Multiline = true,
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Both,
@@ -142,11 +175,11 @@
             };
             _stepReturn = new()
             {
-                BackColor = Color.LightGoldenrodYellow,
+                BackColor = STEPS_BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.Black,
+                ForeColor = PLAIN_TEXT,
                 Text = "Return",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
@@ -160,11 +193,11 @@
 
         private void InitializePage()
         {
-            for (int i = 0; i < _game.BigNumbers.Count; i++)
-                _bigNumbers.Add(CreateButton(i, true));
+            for (int i = 0; i < _game.BigValues.Count; i++)
+                _bigValues.Add(CreateButton(i, true));
 
-            for (int i = 0; i < _game.SmallNumbers.Count; i++)
-                _smallNumbers.Add(CreateButton(i, false));
+            for (int i = 0; i < _game.SmallValues.Count; i++)
+                _smallValues.Add(CreateButton(i, false));
 
             _openSteps.Click += (o, e) =>
             {
@@ -187,38 +220,92 @@
             };
             _spinnerStop.Click += (o, e) =>
             {
-                _spinnerTicker.Stop();
-                for (int i = 0; i < new Random().Next(0, 2); i++)
+                if (!_spinnerTicker.Enabled)
                 {
-                    _game.RandomizeGoal();
-                    _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
+                    _openSteps.Enabled = false;
+                    _stepInfo.Clear();
+                    _spinnerTicker.Enabled = true;
+                    _spinnerTicker.Start();
+                    _spinnerStop.BackColor = STOP_PRE_BACKGROUND;
+                    _spinnerStop.Text = STOP_TEXT_WORDS;
                 }
-
-                _spinnerStop.Enabled = false;
-
-                var steps = _game.GetIntendedSolution();
-
-                for (int i = 0; i < steps.Count; i++)
+                else
                 {
-                    _stepInfo.AppendText(steps[i].ToEquationString());
+                    _spinnerTicker.Stop();
+                    for (int i = 0; i < new Random().Next(0, 2); i++)
+                    {
+                        _game.RandomizeGoal();
+                        _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
+                    }
+
+                    _spinnerTicker.Enabled = false;
+                    _spinnerStop.BackColor = STOP_POST_BACKGROUND;
+                    _spinnerStop.Text = "Resume Spinner";
+
+                    var steps = _game.GetIntendedSolution();
+
+                    for (int i = 0; i < steps.Count; i++)
+                    {
+                        _stepInfo.AppendText(steps[i].ToEquationString());
+                        _stepInfo.AppendText(Environment.NewLine);
+                    }
                     _stepInfo.AppendText(Environment.NewLine);
-                }
-                _stepInfo.AppendText(Environment.NewLine);
-                _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString() + " = " + steps[steps.Count - 1].Result!.AsString());
-               
+                    _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString() + " = " + steps[steps.Count - 1].Result!.AsString());
+
                     _openSteps.Enabled = true;
+                }
+            };
+            _reset.Click += (o, e) =>
+            {
+                _game.Reset();
+
+                _spinnerStop.BackColor = STOP_PRE_BACKGROUND;
+                _spinnerStop.ForeColor = PLAIN_TEXT;
+                _spinnerStop.Text = STOP_TEXT_WORDS;
+
+                for (int i = 0; i < _game.BigValues.Count; i++)
+                {
+                    _bigValues[i].BackColor = BUTTON_BACKGROUND;
+                    _bigValues[i].Enabled = true;
+                    _bigValues[i].ForeColor = BUTTON_TEXT;
+                    _bigValues[i].Text = _game.BigValues[i].AsString();
+                }
+
+                for (int i = 0; i < _game.SmallValues.Count; i++)
+                {
+                    _smallValues[i].BackColor = BUTTON_BACKGROUND;
+                    _smallValues[i].Enabled = true;
+                    _smallValues[i].ForeColor = BUTTON_TEXT;
+                    _smallValues[i].Text = _game.SmallValues[i].AsString();
+                }
+
+
+                _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
+                _windowContainer.SetRowSpan(_bigValueContainer, 1);
+                _windowContainer.SetColumnSpan(_bigValueContainer, 2);
+
+                _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
+                _windowContainer.SetRowSpan(_smallValueContainer, 1);
+                _windowContainer.SetColumnSpan(_smallValueContainer, 4);
+
+                _goalSpinner.Text = "";
+                _spinnerTicker.Stop();
+                _spinnerTicker.Enabled = false;
+                _spinnerStop.Enabled = false;
+                _openSteps.Enabled = false;
+                _stepInfo.Clear();
             };
 
-            _bigNumberContainer = CreateButtonRows(_bigNumbers, MAX_BIG_ROW_BUTTON_COUNT);
-            _smallNumberContainer = CreateButtonRows(_smallNumbers, MAX_SMALL_ROW_BUTTON_COUNT);
+            _bigValueContainer = CreateButtonRows(_bigValues, MAX_BIG_ROW_BUTTON_COUNT);
+            _smallValueContainer = CreateButtonRows(_smallValues, MAX_SMALL_ROW_BUTTON_COUNT);
 
-            _windowContainer.Controls.Add(_bigNumberContainer, 2, 3);
-            _windowContainer.SetRowSpan(_bigNumberContainer, 1);
-            _windowContainer.SetColumnSpan(_bigNumberContainer, 2);
+            _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
+            _windowContainer.SetRowSpan(_bigValueContainer, 1);
+            _windowContainer.SetColumnSpan(_bigValueContainer, 2);
 
-            _windowContainer.Controls.Add(_smallNumberContainer, 1, 5);
-            _windowContainer.SetRowSpan(_smallNumberContainer, 1);
-            _windowContainer.SetColumnSpan(_smallNumberContainer, 4);
+            _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
+            _windowContainer.SetRowSpan(_smallValueContainer, 1);
+            _windowContainer.SetColumnSpan(_smallValueContainer, 4);
 
             _windowContainer.Controls.Add(_openSteps, 3, 1);
             _windowContainer.SetRowSpan(_openSteps, 1);
@@ -227,6 +314,10 @@
             _windowContainer.Controls.Add(_goalSpinner, 4, 1);
             _windowContainer.SetRowSpan(_goalSpinner, 1);
             _windowContainer.SetColumnSpan(_goalSpinner, 1);
+
+            _windowContainer.Controls.Add(_reset, 1, 3);
+            _windowContainer.SetRowSpan(_reset, 1);
+            _windowContainer.SetColumnSpan(_reset, 1);
 
             _windowContainer.Controls.Add(_spinnerStop, 4, 3);
             _windowContainer.SetRowSpan(_spinnerStop, 1);
@@ -251,10 +342,10 @@
             Button output = new()
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right,
-                BackColor = Color.DarkBlue,
+                BackColor = BUTTON_BACKGROUND,
                 Enabled = true,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.White,
+                ForeColor = BUTTON_TEXT,
                 Margin = new Padding(0),
                 Padding = new Padding(0),
                 TabStop = false,
@@ -265,7 +356,7 @@
             output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
             if (isBig)
             {
-                string? v = _game.BigNumbers[pos]?.AsString();
+                string? v = _game.BigValues[pos]?.AsString();
                 if (v == null)
                     throw new NullReferenceException();
 
@@ -273,7 +364,7 @@
             }
             else
             {
-                string? v = _game.SmallNumbers[pos]?.AsString();
+                string? v = _game.SmallValues[pos]?.AsString();
                 if (v == null)
                     throw new NullReferenceException();
 
@@ -282,15 +373,15 @@
 
             output.Click += (o, e) =>
             {
-                output.BackColor = ControlPaint.Light(output.BackColor, 0.5F);
-                output.ForeColor = Color.DarkBlue;
+                output.BackColor = CLICKED_BUTTON_BACKGROUND;
+                output.ForeColor = CLICKED_BUTTON_TEXT;
                 _game.ChooseNumber(pos, isBig);
                 output.Enabled = false;
 
                 if(_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
                 {
-                    _bigNumbers.ForEach(b => b.Enabled = false);
-                    _smallNumbers.ForEach(b => b.Enabled = false);
+                    _bigValues.ForEach(b => b.Enabled = false);
+                    _smallValues.ForEach(b => b.Enabled = false);
                     _spinnerTicker.Enabled = true;
                     _spinnerTicker.Start();
                 }
@@ -309,7 +400,7 @@
             {
                 RowCount = entries.Count / rowAmt + extraRow + 1,
                 ColumnCount = rowAmt,
-                BackColor = Color.LightBlue,
+                BackColor = BUTTON_BACKGROUND_BACKGROUND,
                 CellBorderStyle = TableLayoutPanelCellBorderStyle.None,
                 Dock = DockStyle.Fill,
                 Enabled = true,
@@ -355,7 +446,7 @@
                 {
                     RowCount = 1,
                     ColumnCount = entries.Count % rowAmt,
-                    BackColor = Color.LightBlue,
+                    BackColor = BUTTON_BACKGROUND_BACKGROUND,
                     Dock = DockStyle.Fill,
                     Enabled = true,
                     Visible = true

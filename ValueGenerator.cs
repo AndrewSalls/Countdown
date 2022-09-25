@@ -1,17 +1,17 @@
 ﻿using Countdown.ValueImplementations;
-using static System.Net.Mime.MediaTypeNames;
+
+//https://en.wikipedia.org/wiki/Countdown_(game_show)#Numbers_round
 
 namespace Countdown
 {
     public class ValueGenerator<T> where T : IStringRepresentable<T>
     {
-        //https://en.wikipedia.org/wiki/Countdown_(game_show)#Numbers_round
         public static readonly int REPETITIONS = 1000;
         public static readonly VerifyEndState DEFAULT_VERIFICATION = (t) => true;
         public enum GenerationPhase { SELECTING, RANDOMIZING, EVALUATING, ERROR }
 
-        public List<T> BigNumbers { get; private set; }
-        public List<T> SmallNumbers { get; private set; }
+        public List<T> BigValues { get; private set; }
+        public List<T> SmallValues { get; private set; }
         public List<Operation<T>> Operators { get; private set; }
         public int SelectionAmt { get; private set; }
         public int MinUse { get; private set; }
@@ -86,26 +86,33 @@ namespace Countdown
             if (selectionAmount < 1 || selectionAmount > big.Count + small.Count)
                 throw new ArgumentException("Selection amount is larger than number of possible selections, or is <= 0.");
 
-            BigNumbers = new(big);
-            SmallNumbers = new(small);
-            ShuffleValues(BigNumbers);
-            ShuffleValues(SmallNumbers);
-            //TODO: Randomize order of elements from big & small
-
+            BigValues = new(big);
+            SmallValues = new(small);
             Operators = operations;
-            _selected = new List<T>();
             SelectionAmt = selectionAmount;
             MinUse = minUse;
             MaxUse = maxUse;
             _isValidEndState = verifyEnd;
 
-            Goal = default;
-            _steps = new(SelectionAmt - 1);
-            State = GenerationPhase.SELECTING;
+            _selected = new();
+            _steps = new();
+            Reset();
         }
         public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int selectionAmount, int minUse, int maxUse) : this(big, small, operations, selectionAmount, minUse, maxUse, DEFAULT_VERIFICATION)
         {
 
+        }
+
+        public void Reset()
+        {
+            ShuffleValues(BigValues);
+            ShuffleValues(SmallValues);
+
+            _selected = new List<T>();
+
+            Goal = default;
+            _steps = new(SelectionAmt - 1);
+            State = GenerationPhase.SELECTING;
         }
 
         public void ChooseNumber(int position, bool isBig)
@@ -114,9 +121,9 @@ namespace Countdown
             {
                 //isBig makes position negative
                 if (isBig)
-                    _selected.Add(BigNumbers[position]);
+                    _selected.Add(BigValues[position]);
                 else
-                    _selected.Add(SmallNumbers[position]);
+                    _selected.Add(SmallValues[position]);
 
                 if (_selected.Count >= SelectionAmt)
                     State = GenerationPhase.RANDOMIZING;
