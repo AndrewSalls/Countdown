@@ -57,10 +57,10 @@ namespace Countdown
                 new List<IntValue>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
                 new List<Operation<IntValue>>()
                 {
-                    new Operation<IntValue>("+", 1, (a, b) => a + b, (a, b) => true),
-                    new Operation<IntValue>("-", 1, (a, b) => a - b, (a, b) => a - b >= 0),
-                    new Operation<IntValue>("*", 2, (a, b) => a * b, (a, b) => true),
-                    new Operation<IntValue>("/", 2, (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
+                    new Operation<IntValue>("+", 1, true, true, (a, b) => a + b, (a, b) => true),
+                    new Operation<IntValue>("-", 1, false, false, (a, b) => a - b, (a, b) => a - b >= 0),
+                    new Operation<IntValue>("*", 2, true, true, (a, b) => a * b, (a, b) => true),
+                    new Operation<IntValue>("/", 2, false, false, (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
                 },
                 6, 6);
         }
@@ -96,10 +96,7 @@ namespace Countdown
             _steps = new();
             Reset();
         }
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION)
-        {
-
-        }
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION) { }
 
         public void Reset()
         {

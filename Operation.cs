@@ -7,12 +7,14 @@
         public T? RightValue { get; private set; }
         public T? Result { get; private set; }
         public int Priority { get; private set; }
+        public bool IsAssociative { get; private set; }
+        public bool IsCommutative { get; private set; }
 
         private readonly Evaluation eval;
         private readonly Verification verify;
         private readonly ToStringSymbol display;
 
-        public Operation(string symbol, int priority, Evaluation eval, Verification verify, ToStringSymbol display)
+        public Operation(string symbol, int priority, bool isAssociative, bool isCommutative, Evaluation eval, Verification verify, ToStringSymbol display)
         {
             this.Symbol = symbol;
             this.eval = eval;
@@ -22,14 +24,16 @@
             RightValue = default;
             Result = default;
             Priority = priority;
+            IsAssociative = isAssociative;
+            IsCommutative = isCommutative;
         }
-        public Operation(string symbol, int priority, Evaluation eval, Verification verify) : this(symbol, priority, eval, verify, (a, b) => $"{a} {symbol} {b}")
+        public Operation(string symbol, int priority, bool isAssociative, bool isCommutative, Evaluation eval, Verification verify) : this(symbol, priority, isAssociative, isCommutative, eval, verify, (a, b) => $"{a} {symbol} {b}")
         {
         }
 
         public Operation<T> FixEvaluation(T a, T b)
         {
-            Operation<T> output = new(Symbol, Priority, eval, verify, display);
+            Operation<T> output = new(Symbol, Priority, IsAssociative, IsCommutative, eval, verify, display);
             if (IsEvaluable(a, b))
                 output.Result = Evaluate(a, b);
 

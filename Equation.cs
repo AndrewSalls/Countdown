@@ -1,4 +1,6 @@
-﻿namespace Countdown
+﻿using System.Diagnostics;
+
+namespace Countdown
 {
     public record EquationFactor<T> where T : IStringRepresentable<T>
     {
@@ -58,8 +60,16 @@
                     if (rightSubIndex > -1)
                     {
                         subSteps.Add(new Equation<T>(step, new EquationFactor<T>(subSteps[leftSubIndex]), new EquationFactor<T>(subSteps[rightSubIndex])));
-                        subSteps.RemoveAt(rightSubIndex);
-                        subSteps.RemoveAt(leftSubIndex);
+                        if (rightSubIndex < leftSubIndex)
+                        {
+                            subSteps.RemoveAt(leftSubIndex);
+                            subSteps.RemoveAt(rightSubIndex);
+                        }
+                        else
+                        {
+                            subSteps.RemoveAt(rightSubIndex);
+                            subSteps.RemoveAt(leftSubIndex);
+                        }
                     }
                     else
                     {
@@ -86,15 +96,34 @@
         {
             string left, right;
 
-            if (!Left.IsValue && Left.SubEquation.Operation.Priority < Operation.Priority)
-                left = $"({Left.SubEquation.ConvertToString()})";
+            if (!Left.IsValue)
+            {
+                Equation<T> leftEq = Left.SubEquation;
+                Operation<T> leftOp = leftEq.Operation;
+                if (leftOp.Priority < Operation.Priority)
+                    left = $"({leftEq.ConvertToString()})";
+                else
+                    left = leftEq.ConvertToString();
+            }
             else
-                left = Left.IsValue ? Left.Value.AsString() : Left.SubEquation.ConvertToString();
+                left = Left.Value.AsString();
 
-            if(!Right.IsValue && Right.SubEquation.Operation.Priority < Operation.Priority)
-                right = $"({Right.SubEquation.ConvertToString()})";
+            if (!Right.IsValue)
+            {
+                Equation<T> rightEq = Right.SubEquation;
+                Operation<T> rightOp = rightEq.Operation;
+                if (rightOp.Priority < Operation.Priority)
+                    right = $"({rightEq.ConvertToString()})";
+                else if (rightOp.Priority == Operation.Priority && !Operation.IsAssociative)
+                    right = $"({rightEq.ConvertToString()})";
+                else
+                    right = rightEq.ConvertToString();
+            }
             else
-                right = Right.IsValue ? Right.Value.AsString() : Right.SubEquation.ConvertToString();
+                right = Right.Value.AsString();
+
+            if (left.StartsWith("(") && !right.StartsWith("(") && Operation.IsCommutative)
+                (left, right) = (right, left);
 
             return Operation.ArbitraryExpressionString(left, right);
         }
