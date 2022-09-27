@@ -1,4 +1,4 @@
-﻿namespace Countdown.ValueImplementations
+﻿namespace Countdown.ValueImplementations.Values
 {
     public class IntValue : IStringRepresentable<IntValue>
     {
@@ -18,7 +18,7 @@
             if (val is null)
                 return false;
 
-            return val.Value == this.Value;
+            return val.Value == Value;
         }
 
         public static implicit operator IntValue(int val) => new(val);

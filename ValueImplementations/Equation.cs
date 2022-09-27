@@ -1,6 +1,6 @@
-﻿using System.Diagnostics;
+﻿using Countdown.ValueImplementations.Values;
 
-namespace Countdown
+namespace Countdown.ValueImplementations
 {
     public record EquationFactor<T> where T : IStringRepresentable<T>
     {
@@ -55,7 +55,7 @@ namespace Countdown
                 if (rightSubIndex == leftSubIndex)
                     rightSubIndex = -1;
 
-                if(leftSubIndex > -1)
+                if (leftSubIndex > -1)
                 {
                     if (rightSubIndex > -1)
                     {

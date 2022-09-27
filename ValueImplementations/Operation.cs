@@ -1,4 +1,6 @@
-﻿namespace Countdown
+﻿using Countdown.ValueImplementations.Values;
+
+namespace Countdown.ValueImplementations
 {
     public class Operation<T> where T : IStringRepresentable<T>
     {
@@ -10,13 +12,13 @@
         public bool IsAssociative { get; private set; }
         public bool IsCommutative { get; private set; }
 
-        private readonly Evaluation eval;
-        private readonly Verification verify;
-        private readonly ToStringSymbol display;
+        public readonly Evaluation eval;
+        public readonly Verification verify;
+        public readonly ToStringSymbol display;
 
         public Operation(string symbol, int priority, bool isAssociative, bool isCommutative, Evaluation eval, Verification verify, ToStringSymbol display)
         {
-            this.Symbol = symbol;
+            Symbol = symbol;
             this.eval = eval;
             this.verify = verify;
             this.display = display;
@@ -46,11 +48,6 @@
         public T Evaluate(T a, T b) => eval(a, b);
         public bool IsEvaluable(T a, T b) => verify(a, b);
 
-        public delegate T Evaluation(T a, T b);
-        public delegate bool Verification(T a, T b);
-
-        public delegate string ToStringSymbol(string a, string b);
-
         public string ToEquationString()
         {
             if (LeftValue is null || RightValue is null || Result is null)
@@ -70,5 +67,9 @@
         public string ToExpressionString(T left, T right) => display(left.AsString(), right.AsString());
 
         public string ArbitraryExpressionString(string left, string right) => display(left, right);
+
+        public delegate T Evaluation(T a, T b);
+        public delegate bool Verification(T a, T b);
+        public delegate string ToStringSymbol(string a, string b);
     }
 }

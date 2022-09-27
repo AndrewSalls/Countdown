@@ -1,4 +1,7 @@
-﻿namespace Countdown
+﻿using Countdown.ValueImplementations;
+using Countdown.ValueImplementations.Values;
+
+namespace Countdown
 {
     public class FuncValueGenerator<T> : ValueGenerator<T> where T : IStringRepresentable<T>
     {

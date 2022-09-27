@@ -1,4 +1,4 @@
-﻿namespace Countdown
+﻿namespace Countdown.ValueImplementations.Values
 {
     public interface IStringRepresentable<T>
     {

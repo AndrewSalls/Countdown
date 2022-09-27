@@ -1,4 +1,7 @@
-﻿namespace Countdown
+﻿using Countdown.ValueImplementations;
+using Countdown.ValueImplementations.Values;
+
+namespace Countdown
 {
     public class NumberPickerMenu<T> where T : IStringRepresentable<T>
     {
