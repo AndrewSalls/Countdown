@@ -1,21 +1,16 @@
 ﻿namespace Countdown.ValueImplementations.Values
 {
-    public class IntValue : IStringRepresentable<IntValue>
+    public class IntValue : IStringRepresentable<int>
     {
-        public int Value { get; private set; }
+        public IntValue(int val) : base(val) { }
 
-        public IntValue(int val)
+        public override string AsString() => Value.ToString();
+
+        public override int FromString(string value) => int.Parse(value);
+
+        public override bool IsEquivalentTo(IRepresentable<int, string> val)
         {
-            Value = val;
-        }
-
-        public string AsString() => Value.ToString();
-
-        public IntValue FromString(string value) => int.Parse(value);
-
-        public bool IsEquivalentTo(IntValue? val)
-        {
-            if (val is null)
+            if (val is not IntValue)
                 return false;
 
             return val.Value == Value;

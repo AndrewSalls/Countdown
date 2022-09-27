@@ -1,10 +1,13 @@
 ﻿namespace Countdown.ValueImplementations.Values
 {
-    public interface IStringRepresentable<T>
+    public abstract class IStringRepresentable<T> : IRepresentable<T, string>
     {
-        string AsString();
-        T FromString(string value);
+        public IStringRepresentable(T value) : base(value) { }
 
-        bool IsEquivalentTo(T? val);
+        public abstract string AsString();
+        public abstract T FromString(string value);
+
+        public sealed override string AsRepresentation() => AsString();
+        public sealed override T FromRepresentation(string representation) => FromString(representation);
     }
 }

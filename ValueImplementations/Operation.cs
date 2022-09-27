@@ -2,7 +2,7 @@
 
 namespace Countdown.ValueImplementations
 {
-    public class Operation<T> where T : IStringRepresentable<T>
+    public class Operation<T, U> where T : IRepresentable<T, U>
     {
         public string Symbol { get; private set; }
         public T? LeftValue { get; private set; }
@@ -14,9 +14,9 @@ namespace Countdown.ValueImplementations
 
         public readonly Evaluation eval;
         public readonly Verification verify;
-        public readonly ToStringSymbol display;
+        public readonly OperationRepresentation display;
 
-        public Operation(string symbol, int priority, bool isAssociative, bool isCommutative, Evaluation eval, Verification verify, ToStringSymbol display)
+        public Operation(string symbol, int priority, bool isAssociative, bool isCommutative, Evaluation eval, Verification verify, OperationRepresentation display)
         {
             Symbol = symbol;
             this.eval = eval;
@@ -33,9 +33,9 @@ namespace Countdown.ValueImplementations
         {
         }
 
-        public Operation<T> FixEvaluation(T a, T b)
+        public Operation<T, U> FixEvaluation(T a, T b)
         {
-            Operation<T> output = new(Symbol, Priority, IsAssociative, IsCommutative, eval, verify, display);
+            Operation<T, U> output = new(Symbol, Priority, IsAssociative, IsCommutative, eval, verify, display);
             if (IsEvaluable(a, b))
                 output.Result = Evaluate(a, b);
 
@@ -48,28 +48,29 @@ namespace Countdown.ValueImplementations
         public T Evaluate(T a, T b) => eval(a, b);
         public bool IsEvaluable(T a, T b) => verify(a, b);
 
-        public string ToEquationString()
+        //Modify to properly handle adding equals sign
+        public U ToEquation()
         {
             if (LeftValue is null || RightValue is null || Result is null)
                 throw new InvalidOperationException("Part of equation is null.");
 
-            return display(LeftValue.AsString(), RightValue.AsString()) + " = " + Result.AsString();
+            return display(LeftValue.AsRepresentation(), RightValue.AsRepresentation()) + " = " + Result.AsRepresentation();
         }
 
-        public string ToExpressionString()
+        public U ToExpression()
         {
             if (LeftValue is null || RightValue is null)
                 throw new InvalidOperationException("Part of expression is null.");
 
-            return display(LeftValue.AsString(), RightValue.AsString());
+            return display(LeftValue.AsRepresentation(), RightValue.AsRepresentation());
         }
 
-        public string ToExpressionString(T left, T right) => display(left.AsString(), right.AsString());
+        public U ToExpression(T left, T right) => display(left.AsRepresentation(), right.AsRepresentation());
 
-        public string ArbitraryExpressionString(string left, string right) => display(left, right);
+        public U ArbitraryExpression(U left, U right) => display(left, right);
 
         public delegate T Evaluation(T a, T b);
         public delegate bool Verification(T a, T b);
-        public delegate string ToStringSymbol(string a, string b);
+        public delegate U OperationRepresentation(U a, U b);
     }
 }

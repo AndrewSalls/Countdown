@@ -2,13 +2,13 @@
 
 namespace Countdown.ValueImplementations
 {
-    public record EquationFactor<T> where T : IStringRepresentable<T>
+    public record EquationFactor<T, U> where T : IRepresentable<T, U>
     {
         public bool IsValue { get; private set; }
         public T Value { get { return _value!; } set { _value = value; _subEquation = null; IsValue = true; } }
         private T? _value;
-        public Equation<T> SubEquation { get { return _subEquation!; } set { _subEquation = value; _value = default; IsValue = false; } }
-        private Equation<T>? _subEquation;
+        public Equation<T, U> SubEquation { get { return _subEquation!; } set { _subEquation = value; _value = default; IsValue = false; } }
+        private Equation<T, U>? _subEquation;
 
         public EquationFactor(T val)
         {
@@ -16,7 +16,7 @@ namespace Countdown.ValueImplementations
             _subEquation = null;
             IsValue = true;
         }
-        public EquationFactor(Equation<T> sub)
+        public EquationFactor(Equation<T, U> sub)
         {
             _value = default;
             _subEquation = sub;
@@ -24,33 +24,33 @@ namespace Countdown.ValueImplementations
         }
     }
 
-    public class Equation<T> where T : IStringRepresentable<T>
+    public class Equation<T, U> where T : IRepresentable<T, U>
     {
         //Contains a left and right value, which are either another equationfactor or a value of type T
-        public Operation<T> Operation { get; private set; }
-        public EquationFactor<T> Left { get; private set; }
-        public EquationFactor<T> Right { get; private set; }
+        public Operation<T, U> Operation { get; private set; }
+        public EquationFactor<T, U> Left { get; private set; }
+        public EquationFactor<T, U> Right { get; private set; }
 
-        public Equation(Operation<T> op, EquationFactor<T> left, EquationFactor<T> right)
+        public Equation(Operation<T, U> op, EquationFactor<T, U> left, EquationFactor<T, U> right)
         {
             Operation = op;
             Left = left;
             Right = right;
         }
-        public Equation(Operation<T> op, T left, T right) : this(op, new EquationFactor<T>(left), new EquationFactor<T>(right))
+        public Equation(Operation<T, U> op, T left, T right) : this(op, new EquationFactor<T, U>(left), new EquationFactor<T, U>(right))
         {
         }
-        public Equation(Operation<T> op, EquationFactor<T> left, T right) : this(op, left, new EquationFactor<T>(right)) { }
-        public Equation(Operation<T> op, T left, EquationFactor<T> right) : this(op, new EquationFactor<T>(left), right) { }
+        public Equation(Operation<T, U> op, EquationFactor<T, U> left, T right) : this(op, left, new EquationFactor<T, U>(right)) { }
+        public Equation(Operation<T, U> op, T left, EquationFactor<T, U> right) : this(op, new EquationFactor<T, U>(left), right) { }
 
-        public static Equation<T> ConvertStepsToEquation(IReadOnlyList<Operation<T>> steps)
+        public static Equation<T, U> ConvertStepsToEquation(IReadOnlyList<Operation<T, U>> steps)
         {
-            List<Equation<T>> subSteps = new();
+            List<Equation<T, U>> subSteps = new();
 
-            foreach (Operation<T> step in steps)
+            foreach (Operation<T, U> step in steps)
             {
-                int leftSubIndex = subSteps.FindIndex(e => e.Operation.Result!.IsEquivalentTo(step.LeftValue));
-                int rightSubIndex = subSteps.FindLastIndex(e => e.Operation.Result!.IsEquivalentTo(step.RightValue));
+                int leftSubIndex = subSteps.FindIndex(e => e.Operation.Result!.IsEquivalentTo(step.LeftValue!));
+                int rightSubIndex = subSteps.FindLastIndex(e => e.Operation.Result!.IsEquivalentTo(step.RightValue!));
 
                 if (rightSubIndex == leftSubIndex)
                     rightSubIndex = -1;
@@ -59,7 +59,7 @@ namespace Countdown.ValueImplementations
                 {
                     if (rightSubIndex > -1)
                     {
-                        subSteps.Add(new Equation<T>(step, new EquationFactor<T>(subSteps[leftSubIndex]), new EquationFactor<T>(subSteps[rightSubIndex])));
+                        subSteps.Add(new Equation<T, U>(step, new EquationFactor<T, U>(subSteps[leftSubIndex]), new EquationFactor<T, U>(subSteps[rightSubIndex])));
                         if (rightSubIndex < leftSubIndex)
                         {
                             subSteps.RemoveAt(leftSubIndex);
@@ -73,7 +73,7 @@ namespace Countdown.ValueImplementations
                     }
                     else
                     {
-                        subSteps.Add(new Equation<T>(step, new EquationFactor<T>(subSteps[leftSubIndex]), step.RightValue!));
+                        subSteps.Add(new Equation<T, U>(step, new EquationFactor<T, U>(subSteps[leftSubIndex]), step.RightValue!));
                         subSteps.RemoveAt(leftSubIndex);
                     }
                 }
@@ -81,59 +81,59 @@ namespace Countdown.ValueImplementations
                 {
                     if (rightSubIndex > -1)
                     {
-                        subSteps.Add(new Equation<T>(step, step.LeftValue!, new EquationFactor<T>(subSteps[rightSubIndex])));
+                        subSteps.Add(new Equation<T, U>(step, step.LeftValue!, new EquationFactor<T, U>(subSteps[rightSubIndex])));
                         subSteps.RemoveAt(rightSubIndex);
                     }
                     else
-                        subSteps.Add(new Equation<T>(step, step.LeftValue!, step.RightValue!));
+                        subSteps.Add(new Equation<T, U>(step, step.LeftValue!, step.RightValue!));
                 }
             }
 
             return subSteps.First();
         }
 
-        public string ConvertToString()
+        public U ConvertToRepresentation()
         {
-            string left, right;
+            U left, right;
 
             if (!Left.IsValue)
             {
-                Equation<T> leftEq = Left.SubEquation;
-                Operation<T> leftOp = leftEq.Operation;
+                Equation<T, U> leftEq = Left.SubEquation;
+                Operation<T, U> leftOp = leftEq.Operation;
                 if (leftOp.Priority < Operation.Priority)
-                    left = $"({leftEq.ConvertToString()})";
+                    left = $"({leftEq.ConvertToRepresentation()})";
                 else
-                    left = leftEq.ConvertToString();
+                    left = leftEq.ConvertToRepresentation();
             }
             else
-                left = Left.Value.AsString();
+                left = Left.Value.AsRepresentation();
 
             if (!Right.IsValue)
             {
-                Equation<T> rightEq = Right.SubEquation;
-                Operation<T> rightOp = rightEq.Operation;
+                Equation<T, U> rightEq = Right.SubEquation;
+                Operation<T, U> rightOp = rightEq.Operation;
                 if (rightOp.Priority < Operation.Priority)
-                    right = $"({rightEq.ConvertToString()})";
+                    right = $"({rightEq.ConvertToRepresentation()})";
                 else if (rightOp.Priority == Operation.Priority && !Operation.IsAssociative)
-                    right = $"({rightEq.ConvertToString()})";
+                    right = $"({rightEq.ConvertToRepresentation()})";
                 else
-                    right = rightEq.ConvertToString();
+                    right = rightEq.ConvertToRepresentation();
             }
             else
-                right = Right.Value.AsString();
+                right = Right.Value.AsRepresentation();
 
             if (left.StartsWith("(") && !right.StartsWith("(") && Operation.IsCommutative)
                 (left, right) = (right, left);
 
-            return Operation.ArbitraryExpressionString(left, right);
+            return Operation.ArbitraryExpression(left, right);
         }
-        public List<Operation<T>> ConvertFromEquation(string equation)
+        public List<Operation<T, U>> ConvertFromEquation(string equation)
         {
             //Find any equations in parenthesis and convert those, and repeat until there are no operations remaining
             throw new NotImplementedException();
         }
 
-        private List<Operation<T>> ConvertFromSimpleEquation(string equation)
+        private List<Operation<T, U>> ConvertFromSimpleEquation(string equation)
         {
             //Converts equation where the order of operations does not matter
             throw new NotImplementedException();

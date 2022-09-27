@@ -5,7 +5,7 @@ using Countdown.ValueImplementations.Values;
 
 namespace Countdown
 {
-    public class ValueGenerator<T> where T : IStringRepresentable<T>
+    public class ValueGenerator<T, U> where T : IRepresentable<T, U>
     {
         public static readonly int REPETITIONS = 1000;
         public static readonly VerifyEndState DEFAULT_VERIFICATION = (t) => true;
@@ -13,7 +13,7 @@ namespace Countdown
 
         public List<T> BigValues { get; protected set; }
         public List<T> SmallValues { get; protected set; }
-        public List<Operation<T>> Operators { get; private set; }
+        public List<Operation<T, U>> Operators { get; private set; }
         public int MinUse { get; private set; }
         public int MaxUse { get; private set; }
 
@@ -45,7 +45,7 @@ namespace Countdown
         }
         private T? _goal;
 
-        private List<Operation<T>> _steps;
+        private List<Operation<T, U>> _steps;
 
         private readonly VerifyEndState _isValidEndState;
 
@@ -81,7 +81,7 @@ namespace Countdown
             }
         }
 
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse, VerifyEndState verifyEnd)
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T, U>> operations, int minUse, int maxUse, VerifyEndState verifyEnd)
         {
             if (minUse < 1 || maxUse > big.Count + small.Count)
                 throw new ArgumentException("Selection amount is larger than number of possible selections, or is <= 0.");
@@ -97,7 +97,7 @@ namespace Countdown
             _steps = new();
             Reset();
         }
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION) { }
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T, U>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION) { }
 
         public void Reset()
         {
@@ -132,7 +132,7 @@ namespace Countdown
         {
             if (State == GenerationPhase.RANDOMIZING || State == GenerationPhase.EVALUATING)
             {
-                List<Operation<T>> outputSteps = new();
+                List<Operation<T, U>> outputSteps = new();
                 LinkedList<T> options;
 
                 T left, right;
@@ -184,7 +184,7 @@ namespace Countdown
                 throw new InvalidOperationException();
         }
 
-        public bool IsValidSolution(List<Operation<T>> forces)
+        public bool IsValidSolution(List<Operation<T, U>> forces)
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
@@ -194,7 +194,7 @@ namespace Countdown
 
             LinkedList<T> options = new(Selected);
 
-            foreach(Operation<T> step in forces)
+            foreach(Operation<T, U> step in forces)
             {
                 if (step.LeftValue is null || step.RightValue is null || step.Result is null)
                     return false;
@@ -212,7 +212,7 @@ namespace Countdown
             return options.First()!.IsEquivalentTo(Goal);
         }
 
-        public IReadOnlyList<Operation<T>> GetIntendedSolution()
+        public IReadOnlyList<Operation<T, U>> GetIntendedSolution()
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
