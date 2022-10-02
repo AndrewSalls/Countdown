@@ -1,9 +1,11 @@
 ﻿using Countdown.ValueImplementations;
+using Countdown.ValueImplementations.Representation;
 using Countdown.ValueImplementations.Values;
+using System.Text.RegularExpressions;
 
 namespace Countdown
 {
-    public class NumberPickerMenu<T> where T : IStringRepresentable<T>
+    public class NumberPickerMenu<T, U>
     {
         public static readonly int SPINNER_TICK_INTERVAL = 200;
         public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
@@ -43,14 +45,42 @@ namespace Countdown
         private readonly Button _spinnerStop;
         private readonly Button _openSteps;
 
-        private readonly TextBox _stepInfo;
+        private Panel _panelEmbed;
         private readonly Button _stepReturn;
 
         private readonly ValueGenerator<T> _game;
+        private readonly ExpressionConverter<T, U> _converter;
 
-        public NumberPickerMenu(ValueGenerator<T> game)
+        public static NumberPickerMenu<int, string> CreateDefaultGame()
+        {
+            List<Operation<int>> ops = new()
+            {
+                new Operation<int>(1, true, true, (a, b) => a + b, (a, b) => true),
+                new Operation<int>(1, false, false, (a, b) => a - b, (a, b) => a - b >= 0),
+                new Operation<int>(2, true, true, (a, b) => a * b, (a, b) => true),
+                new Operation<int>(2, false, false, (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
+            };
+            ValueGenerator<int> game = new(
+                new List<int>() { 25, 50, 75, 100 },
+                new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+                ops, 6, 6);
+
+            Dictionary<Operation<int>, SymbolRepresentation<string>> opDisplay = new()
+            {
+                {ops[0], new SymbolRepresentation<string>("+", (l, r) => $"{l} + {r}", rep => Regex.IsMatch(rep, "^.+\\+.+$"))},
+                {ops[1], new SymbolRepresentation<string>("-", (l, r) => $"{l} - {r}", rep => Regex.IsMatch(rep, "^.+-.+$"))},
+                {ops[2], new SymbolRepresentation<string>("*", (l, r) => $"{l} * {r}", rep => Regex.IsMatch(rep, "^.+\\*.+$"))},
+                {ops[3], new SymbolRepresentation<string>("/", (l, r) => $"{l} / {r}", rep => Regex.IsMatch(rep, "^.+/.+$"))},
+            };
+            ExpressionConverter<int, string> converter = new(new StringRepresentation<int>(i => i.ToString(), str => int.Parse(str)), opDisplay);
+
+            return new NumberPickerMenu<int, string>(game, converter);
+        }
+
+        public NumberPickerMenu(ValueGenerator<T> game, ExpressionConverter<T, U> converter)
         {
             _game = game;
+            _converter = converter;
 
             double width = Screen.PrimaryScreen.WorkingArea.Width;
             double height = Screen.PrimaryScreen.WorkingArea.Height;
@@ -91,6 +121,11 @@ namespace Countdown
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+
+            _panelEmbed = new()
+            {
+                Dock = DockStyle.Fill
+            };
 
             _stepContainer = new()
             {
@@ -165,17 +200,6 @@ namespace Countdown
             _reset.FlatAppearance.BorderSize = 0;
             _reset.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
-            _stepInfo = new()
-            {
-                BackColor = INFO_BACKGROUND,
-                Dock = DockStyle.Fill,
-                ForeColor = INFO_TEXT,
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Both,
-                TextAlign = HorizontalAlignment.Left,
-                WordWrap = false
-            };
             _stepReturn = new()
             {
                 BackColor = STEPS_BACKGROUND,
@@ -218,7 +242,7 @@ namespace Countdown
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
-                _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
+                RenderOnControl(_game.Goal, _goalSpinner);
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
@@ -226,7 +250,7 @@ namespace Countdown
                 if (!_spinnerTicker.Enabled)
                 {
                     _openSteps.Enabled = false;
-                    _stepInfo.Clear();
+                    _panelEmbed.Controls.Clear();
                     _spinnerTicker.Enabled = true;
                     _spinnerTicker.Start();
                     _spinnerStop.BackColor = STOP_PRE_BACKGROUND;
@@ -238,7 +262,7 @@ namespace Countdown
                     for (int i = 0; i < new Random().Next(0, 2); i++)
                     {
                         _game.RandomizeGoal();
-                        _goalSpinner.Text = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? "ERROR" : _game.Goal?.AsString() ?? "GENERATION ERROR";
+                        RenderOnControl(_game.Goal, _goalSpinner);
                     }
 
                     _spinnerTicker.Enabled = false;
@@ -247,13 +271,8 @@ namespace Countdown
 
                     var steps = _game.GetIntendedSolution();
 
-                    for (int i = 0; i < steps.Count; i++)
-                    {
-                        _stepInfo.AppendText(steps[i].ToEquationString());
-                        _stepInfo.AppendText(Environment.NewLine);
-                    }
-                    _stepInfo.AppendText(Environment.NewLine);
-                    _stepInfo.AppendText(Equation<T>.ConvertStepsToEquation(steps).ConvertToString() + " = " + steps[steps.Count - 1].Result!.AsString());
+                    _panelEmbed.Controls.Add(_converter.CreateDisplayableRepresentation(steps));
+                    _panelEmbed.Controls[0].Dock = DockStyle.Fill;
 
                     _openSteps.Enabled = true;
                 }
@@ -271,7 +290,7 @@ namespace Countdown
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    _bigValues[i].Text = _game.BigValues[i].AsString();
+                    RenderOnControl(_game.BigValues[i], _bigValues[i]);
                 }
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
@@ -279,7 +298,7 @@ namespace Countdown
                     _smallValues[i].BackColor = BUTTON_BACKGROUND;
                     _smallValues[i].Enabled = true;
                     _smallValues[i].ForeColor = BUTTON_TEXT;
-                    _smallValues[i].Text = _game.SmallValues[i].AsString();
+                    RenderOnControl(_game.SmallValues[i], _smallValues[i]);
                 }
 
 
@@ -296,7 +315,7 @@ namespace Countdown
                 _spinnerTicker.Enabled = false;
                 _spinnerStop.Enabled = false;
                 _openSteps.Enabled = false;
-                _stepInfo.Clear();
+                _panelEmbed.Controls.Clear();
             };
 
             _bigValueContainer = CreateButtonRows(_bigValues, MAX_BIG_ROW_BUTTON_COUNT);
@@ -326,9 +345,9 @@ namespace Countdown
             _windowContainer.SetRowSpan(_spinnerStop, 1);
             _windowContainer.SetColumnSpan(_spinnerStop, 1);
 
-            _stepContainer.Controls.Add(_stepInfo, 1, 1);
-            _stepContainer.SetRowSpan(_stepInfo, 1);
-            _stepContainer.SetColumnSpan(_stepInfo, 1);
+            _stepContainer.Controls.Add(_panelEmbed, 1, 1);
+            _stepContainer.SetRowSpan(_panelEmbed, 1);
+            _stepContainer.SetColumnSpan(_panelEmbed, 1);
 
             _stepContainer.Controls.Add(_stepReturn, 1, 2);
             _stepContainer.SetRowSpan(_stepReturn, 1);
@@ -358,21 +377,9 @@ namespace Countdown
             output.FlatAppearance.BorderSize = 0;
             output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
             if (isBig)
-            {
-                string? v = _game.BigValues[pos]?.AsString();
-                if (v == null)
-                    throw new NullReferenceException();
-
-                output.Text = v;
-            }
+                RenderOnControl(_game.BigValues[pos], output);
             else
-            {
-                string? v = _game.SmallValues[pos]?.AsString();
-                if (v == null)
-                    throw new NullReferenceException();
-
-                output.Text = v;
-            }
+                RenderOnControl(_game.SmallValues[pos], output);
 
             output.Click += (o, e) =>
             {
@@ -473,6 +480,17 @@ namespace Countdown
             }
 
             return output;
+        }
+
+        public void RenderOnControl(T? value, Control control)
+        {
+            dynamic? displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
+            if (displayRep is string)
+                control.Text = displayRep;
+            else if (displayRep is Image)
+                control.BackgroundImage = displayRep;
+            else
+                throw new InvalidDataException("I don't know how to represent data of type " + displayRep?.GetType() ?? "null");
         }
     }
 }

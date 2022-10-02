@@ -1,11 +1,10 @@
 ﻿using Countdown.ValueImplementations;
-using Countdown.ValueImplementations.Values;
 
 //https://en.wikipedia.org/wiki/Countdown_(game_show)#Numbers_round
 
 namespace Countdown
 {
-    public class ValueGenerator<T, U> where T : IRepresentable<T, U>
+    public class ValueGenerator<T>
     {
         public static readonly int REPETITIONS = 1000;
         public static readonly VerifyEndState DEFAULT_VERIFICATION = (t) => true;
@@ -13,7 +12,7 @@ namespace Countdown
 
         public List<T> BigValues { get; protected set; }
         public List<T> SmallValues { get; protected set; }
-        public List<Operation<T, U>> Operators { get; private set; }
+        public List<Operation<T>> Operators { get; private set; }
         public int MinUse { get; private set; }
         public int MaxUse { get; private set; }
 
@@ -26,11 +25,11 @@ namespace Countdown
                 if (State == GenerationPhase.SELECTING || State == GenerationPhase.ERROR)
                     throw new InvalidOperationException();
 
-                return _selected;
+                return _selected.Select(t => t.Value).ToList();
             }
-            private set => _selected = value;
+            private set => _selected = value.Select(t => new ExpressionFactor<T>(t)).ToList();
         }
-        private List<T> _selected;
+        private List<ExpressionFactor<T>> _selected;
 
         public T? Goal
         {
@@ -45,26 +44,11 @@ namespace Countdown
         }
         private T? _goal;
 
-        private List<Operation<T, U>> _steps;
+        private List<Expression<T>> _steps;
 
         private readonly VerifyEndState _isValidEndState;
 
         public GenerationPhase State { get; private set; }
-
-        public static ValueGenerator<IntValue> GetDefaultNumberGenerator()
-        {
-            return new ValueGenerator<IntValue>(
-                new List<IntValue>() { 25, 50, 75, 100 },
-                new List<IntValue>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
-                new List<Operation<IntValue>>()
-                {
-                    new Operation<IntValue>("+", 1, true, true, (a, b) => a + b, (a, b) => true),
-                    new Operation<IntValue>("-", 1, false, false, (a, b) => a - b, (a, b) => a - b >= 0),
-                    new Operation<IntValue>("*", 2, true, true, (a, b) => a * b, (a, b) => true),
-                    new Operation<IntValue>("/", 2, false, false, (a, b) => a / b, (a, b) => b != 0 && a % b == 0)
-                },
-                6, 6);
-        }
 
         static ValueGenerator()
         {
@@ -81,10 +65,10 @@ namespace Countdown
             }
         }
 
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T, U>> operations, int minUse, int maxUse, VerifyEndState verifyEnd)
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse, VerifyEndState verifyEnd)
         {
-            if (minUse < 1 || maxUse > big.Count + small.Count)
-                throw new ArgumentException("Selection amount is larger than number of possible selections, or is <= 0.");
+            if (minUse < 2 || maxUse > big.Count + small.Count || maxUse < minUse)
+                throw new ArgumentException("Selection amount is larger than number of possible selections, or is < 2.");
 
             BigValues = new(big);
             SmallValues = new(small);
@@ -97,14 +81,14 @@ namespace Countdown
             _steps = new();
             Reset();
         }
-        public ValueGenerator(List<T> big, List<T> small, List<Operation<T, U>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION) { }
+        public ValueGenerator(List<T> big, List<T> small, List<Operation<T>> operations, int minUse, int maxUse) : this(big, small, operations, minUse, maxUse, DEFAULT_VERIFICATION) { }
 
         public void Reset()
         {
             ShuffleValues(BigValues);
             ShuffleValues(SmallValues);
 
-            _selected = new List<T>();
+            _selected = new List<ExpressionFactor<T>>();
 
             Goal = default;
             _steps = new(MaxUse - 1);
@@ -117,9 +101,9 @@ namespace Countdown
             {
                 //isBig makes position negative
                 if (isBig)
-                    _selected.Add(BigValues[position]);
+                    _selected.Add(new ExpressionFactor<T>(BigValues[position]));
                 else
-                    _selected.Add(SmallValues[position]);
+                    _selected.Add(new ExpressionFactor<T>(SmallValues[position]));
 
                 if (_selected.Count >= MaxUse)
                     State = GenerationPhase.RANDOMIZING;
@@ -132,10 +116,10 @@ namespace Countdown
         {
             if (State == GenerationPhase.RANDOMIZING || State == GenerationPhase.EVALUATING)
             {
-                List<Operation<T, U>> outputSteps = new();
-                LinkedList<T> options;
+                List<Expression<T>> outputSteps = new();
+                LinkedList<ExpressionFactor<T>> options;
 
-                T left, right;
+                ExpressionFactor<T> left, right;
                 int operationPos, nextValue, errorCount;
 
                 for (int trial = 0; trial < REPETITIONS; trial++)
@@ -158,20 +142,20 @@ namespace Countdown
                             operationPos = _rng.Next(Operators.Count);
                             errorCount++;
                         }
-                        while (errorCount < REPETITIONS && !Operators[operationPos].IsEvaluable(left, right));
+                        while (errorCount < REPETITIONS && !Operators[operationPos].IsEvaluable(left.Value, right.Value));
 
                         if (errorCount >= REPETITIONS)
                             break;
 
-                        var fixedEvaulation = Operators[operationPos].FixEvaluation(left, right);
-                        outputSteps.Add(fixedEvaulation);
+                        var expressionStep = new Expression<T>(Operators[operationPos], left, right);
+                        outputSteps.Add(expressionStep);
 
-                        options.AddLast(fixedEvaulation.Result!);
+                        options.AddLast(new ExpressionFactor<T>(expressionStep));
                     }
 
-                    if (options.Count == 1 && _isValidEndState(options.First()))
+                    if (options.Count == 1 && _isValidEndState(options.First()!.Value))
                     {
-                        Goal = options.First();
+                        Goal = options.First()!.Value;
                         _steps = outputSteps;
                         State = GenerationPhase.EVALUATING;
                         return;
@@ -184,35 +168,35 @@ namespace Countdown
                 throw new InvalidOperationException();
         }
 
-        public bool IsValidSolution(List<Operation<T, U>> forces)
+        public bool IsValidSolution(List<Expression<T>> steps)
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
 
-            if (MinUse > forces.Count - 1 || forces.Count - 1 > MaxUse)
+            if (MinUse > steps.Count - 1 || steps.Count - 1 > MaxUse)
                 return false;
 
             LinkedList<T> options = new(Selected);
 
-            foreach(Operation<T, U> step in forces)
+            foreach(Expression<T> step in steps)
             {
-                if (step.LeftValue is null || step.RightValue is null || step.Result is null)
+                if (step.Left is null || step.Right is null || step.Result is null)
                     return false;
 
-                if (options.Contains(step.LeftValue) && options.Contains(step.RightValue) && step.IsEvaluable(step.LeftValue, step.RightValue) && step.Evaluate(step.LeftValue, step.RightValue)!.IsEquivalentTo(step.Result))
+                if (options.Contains(step.Left.Value) && options.Contains(step.Right.Value) && step.Operation.IsEvaluable(step.Left.Value, step.Right.Value) && step.Operation.Evaluate(step.Left.Value, step.Right.Value)!.Equals(step.Result))
                 {
-                    options.Remove(step.LeftValue);
-                    options.Remove(step.RightValue);
+                    options.Remove(step.Left.Value);
+                    options.Remove(step.Right.Value);
                     options.AddLast(step.Result);
                 }
                 else
                     return false;
             }
 
-            return options.First()!.IsEquivalentTo(Goal);
+            return options.First()!.Equals(Goal);
         }
 
-        public IReadOnlyList<Operation<T, U>> GetIntendedSolution()
+        public IReadOnlyList<Expression<T>> GetIntendedSolution()
         {
             if (State != GenerationPhase.EVALUATING)
                 throw new InvalidOperationException();
