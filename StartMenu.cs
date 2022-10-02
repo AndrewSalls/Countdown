@@ -1,4 +1,5 @@
-﻿using Countdown.ValueImplementations.Values;
+﻿using Countdown.ValueImplementations.Representation;
+using Countdown.ValueImplementations.Values;
 
 namespace Countdown
 {
@@ -6,7 +7,7 @@ namespace Countdown
     {
         public static void Main(string[] _)
         {
-            NumberPickerMenu<IntValue> _1 = new(ValueGenerator<IntValue>.GetDefaultNumberGenerator());
+            NumberPickerMenu<int, string> _1 = NumberPickerMenu<int, string>.CreateDefaultGame();
         }
     }
 }

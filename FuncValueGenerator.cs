@@ -3,7 +3,7 @@ using Countdown.ValueImplementations.Values;
 
 namespace Countdown
 {
-    public class FuncValueGenerator<T> : ValueGenerator<T> where T : IStringRepresentable<T>
+    public class FuncValueGenerator<T> : ValueGenerator<T>
     {
         private readonly GenFunc _smallGen;
         private readonly GenFunc _bigGen;
