@@ -7,6 +7,8 @@ namespace Countdown
 {
     public class NumberPickerMenu<T, U>
     {
+        public static readonly string SHOW_VALUES = "Show Button Values";
+        public static readonly string HIDE_VALUES = "Hide Button Values";
         public static readonly int SPINNER_TICK_INTERVAL = 200;
         public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
         public static readonly int MAX_SMALL_ROW_BUTTON_COUNT = 10;
@@ -44,8 +46,9 @@ namespace Countdown
         private readonly Button _reset;
         private readonly Button _spinnerStop;
         private readonly Button _openSteps;
+        private readonly Button _toggleLabels;
 
-        private Panel _panelEmbed;
+        private readonly Panel _panelEmbed;
         private readonly Button _stepReturn;
 
         private readonly ValueGenerator<T> _game;
@@ -100,7 +103,7 @@ namespace Countdown
             _windowContainer = new()
             {
                 RowCount = 9,
-                ColumnCount = 6,
+                ColumnCount = 7,
                 BackColor = BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
@@ -117,8 +120,9 @@ namespace Countdown
             _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
+            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
 
@@ -152,7 +156,7 @@ namespace Countdown
             _openSteps = new()
             {
                 BackColor = STEPS_BACKGROUND,
-                Dock = DockStyle.Right,
+                Dock = DockStyle.Fill,
                 Enabled = false,
                 FlatStyle = FlatStyle.Flat,
                 ForeColor = PLAIN_TEXT,
@@ -161,6 +165,19 @@ namespace Countdown
                 Visible = true
             };
             _openSteps.FlatAppearance.BorderSize = 0;
+
+            _toggleLabels = new()
+            {
+                BackColor = STEPS_BACKGROUND,
+                Dock = DockStyle.Fill,
+                Enabled = true,
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = PLAIN_TEXT,
+                Text = SHOW_VALUES,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = true
+            };
+            _toggleLabels.FlatAppearance.BorderSize = 0;
 
             _goalSpinner = new()
             {
@@ -226,6 +243,48 @@ namespace Countdown
             for (int i = 0; i < _game.SmallValues.Count; i++)
                 _smallValues.Add(CreateButton(i, false));
 
+            _toggleLabels.Click += (o, e) =>
+            {
+                if(_toggleLabels.Text.Equals(SHOW_VALUES))
+                {
+                    for (int i = 0; i < _bigValues.Count; i++)
+                    {
+                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
+                            RenderOnControl(_game.BigValues[i], _bigValues[i]);
+                    }
+
+                    for (int i = 0; i < _smallValues.Count; i++)
+                    {
+                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
+                            RenderOnControl(_game.SmallValues[i], _smallValues[i]);
+                    }
+
+                    _toggleLabels.Text = HIDE_VALUES;
+                }
+                else
+                {
+                    for (int i = 0; i < _bigValues.Count; i++)
+                    {
+                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
+                        {
+                            _bigValues[i].Text = "";
+                            _bigValues[i].Image = null;
+                        }
+                    }
+
+                    for (int i = 0; i < _smallValues.Count; i++)
+                    {
+                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
+                        {
+                            _smallValues[i].Text = "";
+                            _smallValues[i].Image = null;
+                        }
+                    }
+
+                    _toggleLabels.Text = SHOW_VALUES;
+                }
+            };
+
             _openSteps.Click += (o, e) =>
             {
                 _window.Controls.Remove(_windowContainer);
@@ -290,7 +349,13 @@ namespace Countdown
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    RenderOnControl(_game.BigValues[i], _bigValues[i]);
+                    if(_toggleLabels.Text.Equals(HIDE_VALUES))
+                        RenderOnControl(_game.BigValues[i], _bigValues[i]);
+                    else
+                    {
+                        _bigValues[i].Text = "";
+                        _bigValues[i].Image = null;
+                    }
                 }
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
@@ -298,17 +363,23 @@ namespace Countdown
                     _smallValues[i].BackColor = BUTTON_BACKGROUND;
                     _smallValues[i].Enabled = true;
                     _smallValues[i].ForeColor = BUTTON_TEXT;
-                    RenderOnControl(_game.SmallValues[i], _smallValues[i]);
+                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
+                        RenderOnControl(_game.SmallValues[i], _smallValues[i]);
+                    else
+                    {
+                        _smallValues[i].Text = "";
+                        _smallValues[i].Image = null;
+                    }
                 }
 
 
                 _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
                 _windowContainer.SetRowSpan(_bigValueContainer, 1);
-                _windowContainer.SetColumnSpan(_bigValueContainer, 2);
+                _windowContainer.SetColumnSpan(_bigValueContainer, 3);
 
                 _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
                 _windowContainer.SetRowSpan(_smallValueContainer, 1);
-                _windowContainer.SetColumnSpan(_smallValueContainer, 4);
+                _windowContainer.SetColumnSpan(_smallValueContainer, 5);
 
                 _goalSpinner.Text = "";
                 _spinnerTicker.Stop();
@@ -323,17 +394,21 @@ namespace Countdown
 
             _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
             _windowContainer.SetRowSpan(_bigValueContainer, 1);
-            _windowContainer.SetColumnSpan(_bigValueContainer, 2);
+            _windowContainer.SetColumnSpan(_bigValueContainer, 3);
 
             _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
             _windowContainer.SetRowSpan(_smallValueContainer, 1);
-            _windowContainer.SetColumnSpan(_smallValueContainer, 4);
+            _windowContainer.SetColumnSpan(_smallValueContainer, 5);
 
-            _windowContainer.Controls.Add(_openSteps, 3, 1);
+            _windowContainer.Controls.Add(_openSteps, 4, 1);
             _windowContainer.SetRowSpan(_openSteps, 1);
             _windowContainer.SetColumnSpan(_openSteps, 1);
 
-            _windowContainer.Controls.Add(_goalSpinner, 4, 1);
+            _windowContainer.Controls.Add(_toggleLabels, 3, 1);
+            _windowContainer.SetRowSpan(_toggleLabels, 1);
+            _windowContainer.SetColumnSpan(_toggleLabels, 1);
+
+            _windowContainer.Controls.Add(_goalSpinner, 5, 1);
             _windowContainer.SetRowSpan(_goalSpinner, 1);
             _windowContainer.SetColumnSpan(_goalSpinner, 1);
 
@@ -341,7 +416,7 @@ namespace Countdown
             _windowContainer.SetRowSpan(_reset, 1);
             _windowContainer.SetColumnSpan(_reset, 1);
 
-            _windowContainer.Controls.Add(_spinnerStop, 4, 3);
+            _windowContainer.Controls.Add(_spinnerStop, 5, 3);
             _windowContainer.SetRowSpan(_spinnerStop, 1);
             _windowContainer.SetColumnSpan(_spinnerStop, 1);
 
@@ -376,16 +451,17 @@ namespace Countdown
             };
             output.FlatAppearance.BorderSize = 0;
             output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
-            if (isBig)
+            /*if (isBig)
                 RenderOnControl(_game.BigValues[pos], output);
             else
-                RenderOnControl(_game.SmallValues[pos], output);
+                RenderOnControl(_game.SmallValues[pos], output);*/
 
             output.Click += (o, e) =>
             {
                 output.BackColor = CLICKED_BUTTON_BACKGROUND;
                 output.ForeColor = CLICKED_BUTTON_TEXT;
                 _game.ChooseNumber(pos, isBig);
+                RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output);
                 output.Enabled = false;
 
                 if(_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
