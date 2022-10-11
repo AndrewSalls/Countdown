@@ -1,4 +1,5 @@
-﻿using Countdown.ValueImplementations.Values;
+﻿using Countdown.GameController;
+using Countdown.ValueImplementations.Values;
 
 namespace Countdown.ValueImplementations.Representation
 {
@@ -39,9 +40,9 @@ namespace Countdown.ValueImplementations.Representation
         {
             return new TextBox()
             {
-                BackColor = NumberPickerMenu<T, string>.INFO_BACKGROUND,
+                BackColor = GamePage<T, string>.INFO_BACKGROUND,
                 Dock = DockStyle.Fill,
-                ForeColor = NumberPickerMenu<T, string>.INFO_TEXT,
+                ForeColor = GamePage<T, string>.INFO_TEXT,
                 Multiline = true,
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Both,

@@ -1,11 +1,10 @@
 ﻿using Countdown.ValueImplementations;
 using Countdown.ValueImplementations.Representation;
-using Countdown.ValueImplementations.Values;
 using System.Text.RegularExpressions;
 
-namespace Countdown
+namespace Countdown.GameController
 {
-    public class NumberPickerMenu<T, U>
+    public class GamePage<T, U>
     {
         public static readonly string SHOW_VALUES = "Show Button Values";
         public static readonly string HIDE_VALUES = "Hide Button Values";
@@ -31,7 +30,6 @@ namespace Countdown
         public static readonly Color BUTTON_BACKGROUND_BACKGROUND = Color.LightBlue;
 
         private readonly TableLayoutPanel _windowContainer;
-        private readonly TableLayoutPanel _stepContainer;
         private readonly Form _window;
 
         private readonly List<Button> _bigValues;
@@ -47,14 +45,15 @@ namespace Countdown
         private readonly Button _spinnerStop;
         private readonly Button _openSteps;
         private readonly Button _toggleLabels;
+        private readonly Button _enterSolution;
 
-        private readonly Panel _panelEmbed;
-        private readonly Button _stepReturn;
+        private readonly StepPage<T, U> _stepDisplay;
+        private readonly SolutionPage<T, U> _solutionDisplay;
 
         private readonly ValueGenerator<T> _game;
         private readonly ExpressionConverter<T, U> _converter;
 
-        public static NumberPickerMenu<int, string> CreateDefaultGame()
+        public static GamePage<int, string> CreateDefaultGame()
         {
             List<Operation<int>> ops = new()
             {
@@ -77,10 +76,10 @@ namespace Countdown
             };
             ExpressionConverter<int, string> converter = new(new StringRepresentation<int>(i => i.ToString(), str => int.Parse(str)), opDisplay);
 
-            return new NumberPickerMenu<int, string>(game, converter);
+            return new GamePage<int, string>(game, converter);
         }
 
-        public NumberPickerMenu(ValueGenerator<T> game, ExpressionConverter<T, U> converter)
+        public GamePage(ValueGenerator<T> game, ExpressionConverter<T, U> converter)
         {
             _game = game;
             _converter = converter;
@@ -126,27 +125,8 @@ namespace Countdown
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
             _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
 
-            _panelEmbed = new()
-            {
-                Dock = DockStyle.Fill
-            };
-
-            _stepContainer = new()
-            {
-                RowCount = 4,
-                ColumnCount = 3,
-                BackColor = BACKGROUND,
-                Dock = DockStyle.Fill,
-                Enabled = true,
-                Visible = true
-            };
-            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
-            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
-            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
-            _stepContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
-            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
-            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80));
-            _stepContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            _stepDisplay = new StepPage<T, U>(_window, _windowContainer);
+            _solutionDisplay = new SolutionPage<T, U>();
 
             _bigValues = new();
             _smallValues = new();
@@ -217,19 +197,18 @@ namespace Countdown
             _reset.FlatAppearance.BorderSize = 0;
             _reset.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
-            _stepReturn = new()
+            _enterSolution = new()
             {
                 BackColor = STEPS_BACKGROUND,
                 Dock = DockStyle.Fill,
-                Enabled = true,
+                Enabled = false,
                 FlatStyle = FlatStyle.Flat,
                 ForeColor = PLAIN_TEXT,
-                Text = "Return",
+                Text = "Enter Solution",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
-            _stepReturn.FlatAppearance.BorderSize = 0;
-            _stepReturn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
+            _enterSolution.FlatAppearance.BorderSize = 0;
 
             InitializePage();
             Application.Run(_window);
@@ -245,7 +224,7 @@ namespace Countdown
 
             _toggleLabels.Click += (o, e) =>
             {
-                if(_toggleLabels.Text.Equals(SHOW_VALUES))
+                if (_toggleLabels.Text.Equals(SHOW_VALUES))
                 {
                     for (int i = 0; i < _bigValues.Count; i++)
                     {
@@ -288,13 +267,8 @@ namespace Countdown
             _openSteps.Click += (o, e) =>
             {
                 _window.Controls.Remove(_windowContainer);
-                _window.Controls.Add(_stepContainer);
+                _window.Controls.Add(_stepDisplay);
 
-            };
-            _stepReturn.Click += (o, e) =>
-            {
-                _window.Controls.Remove(_stepContainer);
-                _window.Controls.Add(_windowContainer);
             };
 
             _spinnerTicker.Interval = SPINNER_TICK_INTERVAL;
@@ -309,7 +283,8 @@ namespace Countdown
                 if (!_spinnerTicker.Enabled)
                 {
                     _openSteps.Enabled = false;
-                    _panelEmbed.Controls.Clear();
+                    _enterSolution.Enabled = false;
+                    _stepDisplay.Clear();
                     _spinnerTicker.Enabled = true;
                     _spinnerTicker.Start();
                     _spinnerStop.BackColor = STOP_PRE_BACKGROUND;
@@ -330,10 +305,10 @@ namespace Countdown
 
                     var steps = _game.GetIntendedSolution();
 
-                    _panelEmbed.Controls.Add(_converter.CreateDisplayableRepresentation(steps));
-                    _panelEmbed.Controls[0].Dock = DockStyle.Fill;
+                    _stepDisplay.Display(_converter.CreateDisplayableRepresentation(steps));
 
                     _openSteps.Enabled = true;
+                    _enterSolution.Enabled = true;
                 }
             };
             _reset.Click += (o, e) =>
@@ -349,7 +324,7 @@ namespace Countdown
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    if(_toggleLabels.Text.Equals(HIDE_VALUES))
+                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
                         RenderOnControl(_game.BigValues[i], _bigValues[i]);
                     else
                     {
@@ -386,7 +361,14 @@ namespace Countdown
                 _spinnerTicker.Enabled = false;
                 _spinnerStop.Enabled = false;
                 _openSteps.Enabled = false;
-                _panelEmbed.Controls.Clear();
+                _enterSolution.Enabled = false;
+                _stepDisplay.Clear();
+            };
+
+            _enterSolution.Click += (o, e) =>
+            {
+                _window.Controls.Remove(_windowContainer);
+                _window.Controls.Add(_solutionDisplay);
             };
 
             _bigValueContainer = CreateButtonRows(_bigValues, MAX_BIG_ROW_BUTTON_COUNT);
@@ -420,13 +402,9 @@ namespace Countdown
             _windowContainer.SetRowSpan(_spinnerStop, 1);
             _windowContainer.SetColumnSpan(_spinnerStop, 1);
 
-            _stepContainer.Controls.Add(_panelEmbed, 1, 1);
-            _stepContainer.SetRowSpan(_panelEmbed, 1);
-            _stepContainer.SetColumnSpan(_panelEmbed, 1);
-
-            _stepContainer.Controls.Add(_stepReturn, 1, 2);
-            _stepContainer.SetRowSpan(_stepReturn, 1);
-            _stepContainer.SetColumnSpan(_stepReturn, 1);
+            _windowContainer.Controls.Add(_enterSolution, 2, 7);
+            _windowContainer.SetRowSpan(_enterSolution, 1);
+            _windowContainer.SetColumnSpan(_enterSolution, 3);
 
             _window.Controls.Add(_windowContainer);
             _window.Show();
@@ -451,10 +429,6 @@ namespace Countdown
             };
             output.FlatAppearance.BorderSize = 0;
             output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
-            /*if (isBig)
-                RenderOnControl(_game.BigValues[pos], output);
-            else
-                RenderOnControl(_game.SmallValues[pos], output);*/
 
             output.Click += (o, e) =>
             {
@@ -464,7 +438,7 @@ namespace Countdown
                 RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output);
                 output.Enabled = false;
 
-                if(_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
+                if (_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
                 {
                     _bigValues.ForEach(b => b.Enabled = false);
                     _smallValues.ForEach(b => b.Enabled = false);
@@ -481,7 +455,7 @@ namespace Countdown
             if (rowAmt < 1)
                 throw new ArgumentOutOfRangeException(nameof(rowAmt));
 
-            int extraRow = (entries.Count % rowAmt == 0 ? 0 : 1);
+            int extraRow = entries.Count % rowAmt == 0 ? 0 : 1;
             TableLayoutPanel output = new()
             {
                 RowCount = entries.Count / rowAmt + extraRow + 1,
@@ -515,7 +489,7 @@ namespace Countdown
 
             for (int r = 0; r < entries.Count / rowAmt; r++)
             {
-                for(int c = 0; c < rowAmt; c++)
+                for (int c = 0; c < rowAmt; c++)
                 {
                     Button current = entries[rowAmt * r + c];
                     output.Controls.Add(current);
@@ -526,7 +500,7 @@ namespace Countdown
                 }
             }
 
-            if(extraRow != 0)
+            if (extraRow != 0)
             {
                 TableLayoutPanel extraValues = new()
                 {
@@ -537,9 +511,9 @@ namespace Countdown
                     Enabled = true,
                     Visible = true
                 };
-                for(int i = 0; i < entries.Count % rowAmt; i++)
+                for (int i = 0; i < entries.Count % rowAmt; i++)
                 {
-                    Button endVal = entries[(entries.Count / rowAmt) * rowAmt + i];
+                    Button endVal = entries[entries.Count / rowAmt * rowAmt + i];
                     extraValues.Controls.Add(endVal);
                     extraValues.SetRow(endVal, 0);
                     extraValues.SetColumn(endVal, i);
