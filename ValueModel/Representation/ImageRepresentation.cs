@@ -1,14 +1,15 @@
-﻿using Countdown.ValueImplementations.Values;
+﻿using Countdown.GameController;
+using Countdown.ValueModel.Representation;
 
 namespace Countdown.ValueImplementations.Representation
 {
+    //Represents either an operation f(a, b) or parenthesis (a)
     public class ImageTreeNode
     {
         public bool IsImage { get { return Left is null; } }
         public ImageTreeNode? Left { get; private set; }
         public ImageTreeNode? Middle { get; private set; }
         public ImageTreeNode? Right { get; private set; }
-        public Image? Leaf { get; private set; }
 
         public ImageTreeNode(ImageTreeNode left, ImageTreeNode middle, ImageTreeNode right) => SetBranch(left, middle, right);
 
@@ -19,71 +20,70 @@ namespace Countdown.ValueImplementations.Representation
             if(!IsImage)
             {
                 Left = null;
-                Middle = null;
+                Middle = leaf;
                 Right = null;
-                Leaf = leaf;
             }
         }
 
-        public void SetBranch(ImageTreeNode left, ImageTreeNode middle, ImageTreeNode right)
+        public void SetBranch(ImageTreeNode left, Image middle, ImageTreeNode right)
         {
             Left = left;
             Middle = middle;
             Right = right;
-            Leaf = null;
         }
+
+        public Image CombineAsImage()
+        {
+            if (IsImage)
+                return Middle!;
+            else
+            {
+                Image l = Left!.CombineAsImage();
+                Image m = Middle!.CombineAsImage();
+                Image r = Right!.CombineAsImage();
+
+                return ImageFactory.CombineImagesHorizontal(l, m, r);
+            }
+        }
+        public static implicit operator Image(ImageTreeNode node) => node.CombineAsImage();
+        public static implicit operator ImageTreeNode(Image img) => new(img);
     }
 
-    public class ImageRepresentation<T> : IRepresentation<T, ImageTreeNode>
+    public class ImageRepresentation<T>
     {
-        public override ImageTreeNode AsRepresentation(T value)
+        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT);
+        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT);
+        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT);
+
+        private readonly Representation _asRep;
+
+        public ImageRepresentation(Representation caster) => _asRep = caster;
+
+        public Image AsRepresentation(T value) => _asRep(value);
+
+        public void AppendRepresentation(Control c, ImageTreeNode rep) => c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
+
+        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", GamePage<T>.PLAIN_TEXT);
+
+        public ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation symbol, ImageTreeNode right) => new(left, symbol.Symbol, right);
+
+        public bool IsParenthesized(ImageTreeNode rep) => LEFT_PARENTHESIS.Equals(rep.Left) && RIGHT_PARENTHESIS.Equals(rep.Right);
+
+        public ImageTreeNode Parenthesize(ImageTreeNode rep) => new(LEFT_PARENTHESIS, rep, RIGHT_PARENTHESIS);
+
+        public ImageTreeNode SetEqualTo(ImageTreeNode exp, ImageTreeNode equalTo) => new(exp, EQUALS_SIGN, equalTo);
+
+        public Control CreateDisplayRepresentationBase()
         {
-            throw new NotImplementedException();
+            return new Panel()
+            {
+                AutoScroll = true,
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                Visible = true
+            };
         }
 
-        public override void AppendRepresentation(Control c, ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode CreateErrorRepresentation()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation<ImageTreeNode> symbol, ImageTreeNode right)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool IsParenthesized(ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode Parenthesize(ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode SetEqualTo(ImageTreeNode exp, ImageTreeNode equalTo)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override T FromRepresentation(ImageTreeNode representation)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void AppendLineBreak(Control c)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override Control CreateDisplayRepresentationBase()
-        {
-            throw new NotImplementedException();
-        }
+        public delegate Image Representation(T value);
     }
 }

@@ -1,21 +1,19 @@
-﻿using Countdown.ValueImplementations.Values;
-
-namespace Countdown.ValueImplementations.Representation
+﻿namespace Countdown.ValueImplementations.Representation
 {
-    public class ExpressionConverter<T, U>
+    public class ExpressionConverter<T>
     {
-        public IRepresentation<T, U> Representer { get; private set; }
-        private readonly Dictionary<Operation<T>, SymbolRepresentation<U>> _operationRepresentation;
+        public ImageRepresentation<T> Representer { get; private set; }
+        private readonly Dictionary<Operation<T>, SymbolRepresentation> _operationRepresentation;
 
-        public ExpressionConverter(IRepresentation<T, U> converter, Dictionary<Operation<T>, SymbolRepresentation<U>> operationRepresentations)
+        public ExpressionConverter(ImageRepresentation<T> converter, Dictionary<Operation<T>, SymbolRepresentation> operationRepresentations)
         {
             Representer = converter;
             _operationRepresentation = operationRepresentations;
         }
 
-        public U ConvertToRepresentation(Expression<T> exp)
+        public ImageTreeNode ConvertToRepresentation(Expression<T> exp)
         {
-            U left, right;
+            ImageTreeNode left, right;
 
             if(exp.Left.IsValue && exp.Right.IsValue)
             {
@@ -54,13 +52,13 @@ namespace Countdown.ValueImplementations.Representation
             return Representer.CreateExpression(left, _operationRepresentation[exp.Operation], right);
         }
 
-        public Expression<T> ConvertFromRepresentation(U expression)
+        public Expression<T> ConvertFromRepresentation(ImageTreeNode expression)
         {
             //Find any equations in parenthesis and convert those, and repeat until there are no operations remaining
             throw new NotImplementedException();
         }
 
-        private Expression<T> ConvertFromSimpleEquation(U expression)
+        private Expression<T> ConvertFromSimpleEquation(ImageTreeNode expression)
         {
             //Converts equation where the order of operations does not matter
             throw new NotImplementedException();
@@ -78,9 +76,7 @@ namespace Countdown.ValueImplementations.Representation
                                                      _operationRepresentation[steps[i].Operation],
                                                      Representer.AsRepresentation(steps[i].Right.Value)),
                         Representer.AsRepresentation(steps[i].Result)));
-                Representer.AppendLineBreak(output);
             }
-            Representer.AppendLineBreak(output);
             Representer.AppendRepresentation(output, Representer.SetEqualTo(ConvertToRepresentation(Expression<T>.ConvertStepsToEquation(steps)), Representer.AsRepresentation(steps[steps.Count - 1].Result)));
 
             return output;

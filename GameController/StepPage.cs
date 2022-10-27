@@ -1,6 +1,6 @@
 ﻿namespace Countdown.GameController
 {
-    public class StepPage<T, U> : TableLayoutPanel
+    public class StepPage<T> : TableLayoutPanel
     {
         private readonly Panel _panelEmbed;
         private readonly Button _stepReturn;
@@ -9,7 +9,7 @@
         {
             RowCount = 4;
             ColumnCount = 3;
-            BackColor = GamePage<T, U>.BACKGROUND;
+            BackColor = GamePage<T>.BACKGROUND;
             Dock = DockStyle.Fill;
             Enabled = true;
             Visible = true;
@@ -29,11 +29,11 @@
 
             _stepReturn = new()
             {
-                BackColor = GamePage<T, U>.STEPS_BACKGROUND,
+                BackColor = GamePage<T>.STEPS_BACKGROUND,
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = GamePage<T, U>.PLAIN_TEXT,
+                ForeColor = GamePage<T>.PLAIN_TEXT,
                 Text = "Return",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true

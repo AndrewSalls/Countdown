@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# IDE0023: Use block body for conversion operators
+dotnet_diagnostic.IDE0023.severity = suggestion
