@@ -51,9 +51,12 @@ namespace Countdown.ValueImplementations.Representation
 
     public class ImageRepresentation<T>
     {
-        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT);
-        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT);
-        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT);
+        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
+        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
+        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
+
+        public static Color RenderColor = GamePage<int>.PLAIN_TEXT;
+        public static int RenderSize = ImageFactory.CHARACTER_SIZE;
 
         private readonly Representation _asRep;
 
@@ -63,7 +66,7 @@ namespace Countdown.ValueImplementations.Representation
 
         public void AppendRepresentation(Control c, ImageTreeNode rep) => c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
 
-        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", GamePage<T>.PLAIN_TEXT);
+        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", RenderColor, RenderSize);
 
         public ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation symbol, ImageTreeNode right) => new(left, symbol.Symbol, right);
 

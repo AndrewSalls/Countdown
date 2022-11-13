@@ -1,5 +1,4 @@
-﻿using Countdown.GameController;
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
 namespace Countdown.ValueModel.Representation
@@ -9,7 +8,7 @@ namespace Countdown.ValueModel.Representation
         public const int CHARACTER_SIZE = 128;
         public static readonly Font STRING_FONT = new(FontFamily.GenericMonospace, CHARACTER_SIZE, FontStyle.Regular, GraphicsUnit.Pixel);
 
-        public static Image CreateImage(string input, Color color, int size = CHARACTER_SIZE)
+        public static Image CreateImage(string input, Color color, int size)
         {
             Bitmap bmp = new(size * input.Length, size);
             Graphics g = Graphics.FromImage(bmp);
@@ -58,6 +57,29 @@ namespace Countdown.ValueModel.Representation
             }
 
             return bmp;
+        }
+
+        public static void SetImage(Control ctrl, Image img)
+        {
+            Size cs = ctrl.Size;
+            if (img.Size != cs)
+            {
+                float ratio = Math.Max(cs.Height / (float)img.Height, cs.Width / (float)img.Width);
+                if (ratio > 1)
+                {
+                    int calc(float f) => (int)Math.Ceiling(f * ratio);
+                    img = new Bitmap(img, calc(img.Width), calc(img.Height));
+                }
+
+                Bitmap part = new Bitmap(cs.Width, cs.Height);
+                using (Graphics g = Graphics.FromImage(part))
+                {
+                    g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
+                }
+                img = part;
+            }
+            ctrl.BackgroundImageLayout = ImageLayout.Center;
+            ctrl.BackgroundImage = img;
         }
     }
 }

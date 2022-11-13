@@ -68,12 +68,12 @@ namespace Countdown.GameController
 
             Dictionary<Operation<int>, SymbolRepresentation> opDisplay = new()
             {
-                {ops[0], new SymbolRepresentation(StoI.CreateImage("+", PLAIN_TEXT), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[1], new SymbolRepresentation(StoI.CreateImage("-", PLAIN_TEXT), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[2], new SymbolRepresentation(StoI.CreateImage("*", PLAIN_TEXT), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[3], new SymbolRepresentation(StoI.CreateImage("/", PLAIN_TEXT), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[0], new SymbolRepresentation(StoI.CreateImage("+", PLAIN_TEXT, StoI.CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[1], new SymbolRepresentation(StoI.CreateImage("-", PLAIN_TEXT, StoI.CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[2], new SymbolRepresentation(StoI.CreateImage("*", PLAIN_TEXT, StoI.CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[3], new SymbolRepresentation(StoI.CreateImage("/", PLAIN_TEXT, StoI.CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
             };
-            ExpressionConverter<int> converter = new(new ImageRepresentation<int>(i => StoI.CreateImage(i.ToString(), BUTTON_TEXT)), opDisplay);
+            ExpressionConverter<int> converter = new(new ImageRepresentation<int>(i => StoI.CreateImage(i.ToString(), BUTTON_TEXT, ImageRepresentation<T>.RenderSize)), opDisplay);
 
             return new GamePage<int>(game, converter);
         }
@@ -431,6 +431,11 @@ namespace Countdown.GameController
                     _spinnerTicker.Start();
                 }
             };
+            output.Resize += (o, e) =>
+            {
+                if(output.BackColor.Equals(CLICKED_BUTTON_BACKGROUND) || _toggleLabels.Text.Equals(HIDE_VALUES))
+                    RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output, CLICKED_BUTTON_TEXT);
+            };
 
             return output;
         }
@@ -519,8 +524,11 @@ namespace Countdown.GameController
 
         public void RenderOnControl(T? value, Control control, Color renderingColor)
         {
+            ImageRepresentation<T>.RenderColor = renderingColor;
+            ImageRepresentation<T>.RenderSize = control.Height;
             Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
-            control.BackgroundImage = displayRep;
+            StoI.SetImage(control, displayRep);
+            //control.BackgroundImage = displayRep;
         }
     }
 }
