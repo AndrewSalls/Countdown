@@ -25,14 +25,15 @@ namespace Countdown.GameController
         public static readonly Color INFO_TEXT = Color.Black;
         public static readonly Color BUTTON_BACKGROUND = Color.DarkBlue;
         public static readonly Color BUTTON_TEXT = Color.White;
-        public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.5F);
+        public static readonly Color BUTTON_HIGHLIGHTED_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.15F);
+        public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.35F);
         public static readonly Color CLICKED_BUTTON_TEXT = Color.DarkBlue;
         public static readonly Color BUTTON_BACKGROUND_BACKGROUND = Color.LightBlue;
 
        private readonly Form _window;
 
-        private readonly List<Button> _bigValues;
-        private readonly List<Button> _smallValues;
+        private readonly List<Panel> _bigValues;
+        private readonly List<Panel> _smallValues;
 
         private TableLayoutPanel _bigValueContainer;
         private TableLayoutPanel _smallValueContainer;
@@ -397,23 +398,19 @@ namespace Countdown.GameController
             _window.Focus();
         }
 
-        private Button CreateButton(int pos, bool isBig)
+        private Panel CreateButton(int pos, bool isBig)
         {
-            Button output = new()
+            Panel output = new()
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right,
                 BackColor = BUTTON_BACKGROUND,
                 Enabled = true,
-                FlatStyle = FlatStyle.Flat,
                 ForeColor = BUTTON_TEXT,
                 Margin = new Padding(0),
                 Padding = new Padding(0),
                 TabStop = false,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
-            output.FlatAppearance.BorderSize = 0;
-            output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
             output.Click += (o, e) =>
             {
@@ -431,6 +428,16 @@ namespace Countdown.GameController
                     _spinnerTicker.Start();
                 }
             };
+            output.MouseEnter += (o, e) =>
+            {
+                if (output.Enabled)
+                    output.BackColor = BUTTON_HIGHLIGHTED_BACKGROUND;
+            };
+            output.MouseLeave += (o, e) =>
+            {
+                if (output.Enabled)
+                    output.BackColor = BUTTON_BACKGROUND;
+            };
             output.Resize += (o, e) =>
             {
                 if (output.BackColor.Equals(CLICKED_BUTTON_BACKGROUND) || _toggleLabels.Text.Equals(HIDE_VALUES))
@@ -442,7 +449,7 @@ namespace Countdown.GameController
             return output;
         }
 
-        private static TableLayoutPanel CreateButtonRows(List<Button> entries, int rowAmt)
+        private static TableLayoutPanel CreateButtonRows(List<Panel> entries, int rowAmt)
         {
             if (rowAmt < 1)
                 throw new ArgumentOutOfRangeException(nameof(rowAmt));
@@ -483,7 +490,7 @@ namespace Countdown.GameController
             {
                 for (int c = 0; c < rowAmt; c++)
                 {
-                    Button current = entries[rowAmt * r + c];
+                    Panel current = entries[rowAmt * r + c];
                     output.Controls.Add(current);
                     output.SetRow(current, r);
                     output.SetColumn(current, c);
@@ -505,7 +512,7 @@ namespace Countdown.GameController
                 };
                 for (int i = 0; i < entries.Count % rowAmt; i++)
                 {
-                    Button endVal = entries[entries.Count / rowAmt * rowAmt + i];
+                    Panel endVal = entries[entries.Count / rowAmt * rowAmt + i];
                     extraValues.Controls.Add(endVal);
                     extraValues.SetRow(endVal, 0);
                     extraValues.SetColumn(endVal, i);
