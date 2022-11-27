@@ -45,22 +45,34 @@ namespace Countdown.ValueImplementations.Representation
                 return ImageFactory.CombineImagesHorizontal(l, m, r);
             }
         }
-        public static implicit operator Image(ImageTreeNode node) => node.CombineAsImage();
-        public static implicit operator ImageTreeNode(Image img) => new(img);
+        public static implicit operator Image(ImageTreeNode node)
+        {
+            return node.CombineAsImage();
+        }
+
+        public static implicit operator ImageTreeNode(Image img)
+        {
+            return new(img);
+        }
     }
 
     public class ImageRepresentation<T>
     {
-        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
-        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
-        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT, ImageFactory.CHARACTER_SIZE);
+        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
+        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
+        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
 
-        public static Color RenderColor = GamePage<int>.PLAIN_TEXT;
-        public static int RenderSize = ImageFactory.CHARACTER_SIZE;
+        public static Color RenderColor { get; set; }
+        public static int RenderSize { get; set; }
 
         private readonly Representation _asRep;
 
-        public ImageRepresentation(Representation caster) => _asRep = caster;
+        public ImageRepresentation(Representation caster)
+        {
+            RenderColor = GamePage<int>.PLAIN_TEXT;
+            RenderSize = ImageFactory.DEFAULT_CHARACTER_SIZE;
+            _asRep = caster;
+        }
 
         public Image AsRepresentation(T value) => _asRep(value);
 

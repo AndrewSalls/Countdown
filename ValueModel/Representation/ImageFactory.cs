@@ -5,12 +5,12 @@ namespace Countdown.ValueModel.Representation
 {
     public class ImageFactory
     {
-        public const int CHARACTER_SIZE = 128;
-        public static readonly Font STRING_FONT = new(FontFamily.GenericMonospace, CHARACTER_SIZE, FontStyle.Regular, GraphicsUnit.Pixel);
+        public const int DEFAULT_CHARACTER_SIZE = 64;
+        public static readonly Font STRING_FONT = new(FontFamily.GenericMonospace, DEFAULT_CHARACTER_SIZE, FontStyle.Regular, GraphicsUnit.Pixel);
 
-        public static Image CreateImage(string input, Color color, int size)
-        {
-            Bitmap bmp = new(size * input.Length, size);
+        public static Image CreateImage(string input, Color color, int fontSize)
+        {     
+            Bitmap bmp = new(fontSize, fontSize);
             Graphics g = Graphics.FromImage(bmp);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -18,14 +18,15 @@ namespace Countdown.ValueModel.Representation
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
-            RectangleF bounds = new(new PointF(0, 0), g.MeasureString(input, STRING_FONT));
+            Font sized = new(STRING_FONT.FontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+            RectangleF bounds = new(new PointF(0, 0), g.MeasureString(input, sized));
             StringFormat format = new()
             {
                 Alignment = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center
             };
 
-            g.DrawString(input, STRING_FONT, new SolidBrush(color), bounds, format);
+            g.DrawString(input, sized, new SolidBrush(color), bounds, format);
             g.Flush();
             return bmp;
         }
@@ -64,14 +65,17 @@ namespace Countdown.ValueModel.Representation
             Size cs = ctrl.Size;
             if (img.Size != cs)
             {
-                float ratio = Math.Max(cs.Height / (float)img.Height, cs.Width / (float)img.Width);
-                if (ratio > 1)
+                //Gets size of control relative to size of image
+                float ratio = Math.Min(cs.Height / (float)img.Height, cs.Width / (float)img.Width);
+                //If image is larger than control, scales image to fit in control
+                if (ratio < 1)
                 {
-                    int calc(float f) => (int)Math.Ceiling(f * ratio);
+                    int calc(float f) => (int)(Math.Ceiling(f / ratio));
                     img = new Bitmap(img, calc(img.Width), calc(img.Height));
                 }
 
-                Bitmap part = new Bitmap(cs.Width, cs.Height);
+                //Places image in center of control
+                Bitmap part = new(cs.Width, cs.Height);
                 using (Graphics g = Graphics.FromImage(part))
                 {
                     g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
