@@ -58,9 +58,9 @@ namespace Countdown.ValueImplementations.Representation
 
     public class ImageRepresentation<T>
     {
-        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
-        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
-        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_CHARACTER_SIZE);
+        public static readonly Image LEFT_PARENTHESIS = ImageFactory.CreateImage("(", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox);
+        public static readonly Image RIGHT_PARENTHESIS = ImageFactory.CreateImage(")", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox);
+        public static readonly Image EQUALS_SIGN = ImageFactory.CreateImage("=", GamePage<int>.PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox);
 
         public static Color RenderColor { get; set; }
         public static int RenderSize { get; set; }
@@ -70,15 +70,15 @@ namespace Countdown.ValueImplementations.Representation
         public ImageRepresentation(Representation caster)
         {
             RenderColor = GamePage<int>.PLAIN_TEXT;
-            RenderSize = ImageFactory.DEFAULT_CHARACTER_SIZE;
+            RenderSize = ImageFactory.DEFAULT_SIZE.scale;
             _asRep = caster;
         }
 
-        public Image AsRepresentation(T value) => _asRep(value);
+        public Image AsRepresentation(T value, Size bBox) => _asRep(value, bBox);
 
         public void AppendRepresentation(Control c, ImageTreeNode rep) => c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
 
-        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", RenderColor, RenderSize);
+        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", RenderColor, new Size(RenderSize, RenderSize));
 
         public ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation symbol, ImageTreeNode right) => new(left, symbol.Symbol, right);
 
@@ -99,6 +99,6 @@ namespace Countdown.ValueImplementations.Representation
             };
         }
 
-        public delegate Image Representation(T value);
+        public delegate Image Representation(T value, Size boundingBox);
     }
 }

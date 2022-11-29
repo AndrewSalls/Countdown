@@ -1,5 +1,6 @@
 ﻿using Countdown.ValueImplementations;
 using Countdown.ValueImplementations.Representation;
+using Countdown.ValueModel.Representation;
 using StoI = Countdown.ValueModel.Representation.ImageFactory;
 
 namespace Countdown.GameController
@@ -69,12 +70,12 @@ namespace Countdown.GameController
 
             Dictionary<Operation<int>, SymbolRepresentation> opDisplay = new()
             {
-                {ops[0], new SymbolRepresentation(StoI.CreateImage("+", PLAIN_TEXT, StoI.DEFAULT_CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[1], new SymbolRepresentation(StoI.CreateImage("-", PLAIN_TEXT, StoI.DEFAULT_CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[2], new SymbolRepresentation(StoI.CreateImage("*", PLAIN_TEXT, StoI.DEFAULT_CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[3], new SymbolRepresentation(StoI.CreateImage("/", PLAIN_TEXT, StoI.DEFAULT_CHARACTER_SIZE), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[0], new SymbolRepresentation(StoI.CreateImage("+", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[1], new SymbolRepresentation(StoI.CreateImage("-", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[2], new SymbolRepresentation(StoI.CreateImage("*", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[3], new SymbolRepresentation(StoI.CreateImage("/", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
             };
-            ExpressionConverter<int> converter = new(new ImageRepresentation<int>(i => StoI.CreateImage(i.ToString(), BUTTON_TEXT, ImageRepresentation<T>.RenderSize)), opDisplay);
+            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, bb) => StoI.CreateImage(i.ToString(), BUTTON_TEXT, bb)), opDisplay);
 
             return new GamePage<int>(game, converter);
         }
@@ -410,8 +411,8 @@ namespace Countdown.GameController
                 {
                     Graphics g = e.Graphics;
                     T value = isBig ? _game.BigValues[pos] : _game.SmallValues[pos];
-                    Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
-                    StoI.SetImage(output, g, displayRep);
+                    Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value, output.Size);
+                    g.DrawImage(displayRep, 0, 0, output.Width, output.Height);
                 }
             };
 

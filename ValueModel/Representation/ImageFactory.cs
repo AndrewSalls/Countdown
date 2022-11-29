@@ -5,12 +5,34 @@ namespace Countdown.ValueModel.Representation
 {
     public class ImageFactory
     {
-        public const int DEFAULT_CHARACTER_SIZE = 64;
-        public static readonly Font STRING_FONT = new(FontFamily.GenericMonospace, DEFAULT_CHARACTER_SIZE, FontStyle.Regular, GraphicsUnit.Pixel);
+        public static readonly (int scale, Size bBox)[] FONT_SIZES;
+        public static readonly (int scale, Size bBox) DEFAULT_SIZE;
 
-        public static Image CreateImage(string input, Color color, int fontSize)
-        {     
-            Bitmap bmp = new(fontSize, fontSize);
+        static ImageFactory()
+        {
+            using Graphics g = Graphics.FromImage(new Bitmap(1, 1));
+            FONT_SIZES = new (int, Size)[]{
+                (128, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 128, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (96, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 96, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (80, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 80, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (64, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 64, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (48, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 48, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (36, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 36, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (24, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 24, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (16, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 16, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (14, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 14, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (12, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 12, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (8, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 8, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (4, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 4, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (2, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 2, FontStyle.Regular, GraphicsUnit.Pixel))),
+                (1, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 1, FontStyle.Regular, GraphicsUnit.Pixel)))
+            };
+            DEFAULT_SIZE = FONT_SIZES[1];
+        }
+        public static Image CreateImage(string input, Color color, Size boundingBox)
+        {
+            //System.Diagnostics.Debug.WriteLine(FONT_SIZES.Select(f => $"{f.scale} -> {f.bBox.Width} {f.bBox.Height}").Aggregate((a, b) => a + "\n" + b));
+            Bitmap bmp = new(boundingBox.Width, boundingBox.Height);
             Graphics g = Graphics.FromImage(bmp);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -18,15 +40,16 @@ namespace Countdown.ValueModel.Representation
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
-            Font sized = new(STRING_FONT.FontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-            RectangleF bounds = new(new PointF(0, 0), g.MeasureString(input, sized));
+            (int scale, Size bBox) = FONT_SIZES.Where(s => input.Length * s.bBox.Width < boundingBox.Width && s.bBox.Height < boundingBox.Height).FirstOrDefault(FONT_SIZES[^1]);
+
+            Font sized = new(new FontFamily("Consolas"), scale, FontStyle.Regular, GraphicsUnit.Pixel);
             StringFormat format = new()
             {
                 Alignment = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center
             };
 
-            g.DrawString(input, sized, new SolidBrush(color), bounds, format);
+            g.DrawString(input, sized, new SolidBrush(color), new RectangleF(0, 0, boundingBox.Width, boundingBox.Height), format);
             g.Flush();
             return bmp;
         }
@@ -58,25 +81,6 @@ namespace Countdown.ValueModel.Representation
             }
 
             return bmp;
-        }
-
-        public static void SetImage(Panel ctrl, Graphics g, Image img)
-        {
-            Size cs = ctrl.Size;
-            if (img.Size != cs)
-            {
-                //Gets size of control relative to size of image
-                float ratio = Math.Min(cs.Height / (float)img.Height, cs.Width / (float)img.Width);
-                //If image is larger than control, scales image to fit in control
-                if (ratio < 1)
-                {
-                    int calc(float f) => (int)(Math.Ceiling(f / ratio));
-                    img = new Bitmap(img, calc(img.Width), calc(img.Height));
-                }
-
-            }
-
-            g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
         }
     }
 }
