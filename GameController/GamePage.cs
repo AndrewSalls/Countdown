@@ -38,7 +38,7 @@ namespace Countdown.GameController
         private TableLayoutPanel _bigValueContainer;
         private TableLayoutPanel _smallValueContainer;
 
-        private readonly Label _goalSpinner;
+        private readonly Panel _goalSpinner;
         private readonly System.Windows.Forms.Timer _spinnerTicker;
 
         private readonly Button _reset;
@@ -163,7 +163,6 @@ namespace Countdown.GameController
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 ForeColor = SPINNER_TEXT,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
             _spinnerTicker = new();
@@ -223,37 +222,15 @@ namespace Countdown.GameController
             _toggleLabels.Click += (o, e) =>
             {
                 if (_toggleLabels.Text.Equals(SHOW_VALUES))
-                {
-                    for (int i = 0; i < _bigValues.Count; i++)
-                    {
-                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            RenderOnControl(_game.BigValues[i], _bigValues[i], CLICKED_BUTTON_TEXT);
-                    }
-
-                    for (int i = 0; i < _smallValues.Count; i++)
-                    {
-                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            RenderOnControl(_game.SmallValues[i], _smallValues[i], CLICKED_BUTTON_TEXT);
-                    }
-
                     _toggleLabels.Text = HIDE_VALUES;
-                }
                 else
-                {
-                    for (int i = 0; i < _bigValues.Count; i++)
-                    {
-                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            _bigValues[i].BackgroundImage = null;
-                    }
-
-                    for (int i = 0; i < _smallValues.Count; i++)
-                    {
-                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            _smallValues[i].BackgroundImage = null;
-                    }
-
                     _toggleLabels.Text = SHOW_VALUES;
-                }
+
+                for (int i = 0; i < _game.BigValues.Count; i++)
+                    _bigValues[i].Refresh();
+
+                for (int i = 0; i < _game.SmallValues.Count; i++)
+                    _smallValues[i].Refresh();
             };
 
             _openSteps.Click += (o, e) =>
@@ -267,7 +244,6 @@ namespace Countdown.GameController
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
-                RenderOnControl(_game.Goal, _goalSpinner, SPINNER_TEXT);
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
@@ -286,10 +262,7 @@ namespace Countdown.GameController
                 {
                     _spinnerTicker.Stop();
                     for (int i = 0; i < new Random().Next(0, 2); i++)
-                    {
                         _game.RandomizeGoal();
-                        RenderOnControl(_game.Goal, _goalSpinner, SPINNER_TEXT);
-                    }
 
                     _spinnerTicker.Enabled = false;
                     _spinnerStop.BackColor = STOP_POST_BACKGROUND;
@@ -316,10 +289,7 @@ namespace Countdown.GameController
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
-                        RenderOnControl(_game.BigValues[i], _bigValues[i], BUTTON_TEXT);
-                    else
-                        _bigValues[i].BackgroundImage = null;
+                    _bigValues[i].Refresh();
                 }
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
@@ -327,10 +297,7 @@ namespace Countdown.GameController
                     _smallValues[i].BackColor = BUTTON_BACKGROUND;
                     _smallValues[i].Enabled = true;
                     _smallValues[i].ForeColor = BUTTON_TEXT;
-                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
-                        RenderOnControl(_game.SmallValues[i], _smallValues[i], BUTTON_TEXT);
-                    else
-                        _smallValues[i].BackgroundImage = null;
+                    _smallValues[i].Refresh();
                 }
 
 
@@ -417,7 +384,6 @@ namespace Countdown.GameController
                 output.BackColor = CLICKED_BUTTON_BACKGROUND;
                 output.ForeColor = CLICKED_BUTTON_TEXT;
                 _game.ChooseNumber(pos, isBig);
-                RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output, CLICKED_BUTTON_TEXT);
                 output.Enabled = false;
 
                 if (_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
@@ -438,11 +404,14 @@ namespace Countdown.GameController
                 if (output.Enabled)
                     output.BackColor = BUTTON_BACKGROUND;
             };
-            output.Resize += (o, e) =>
+            output.Paint += (o, e) =>
             {
-                if (output.BackColor.Equals(CLICKED_BUTTON_BACKGROUND) || _toggleLabels.Text.Equals(HIDE_VALUES))
+                if(output.BackColor.Equals(CLICKED_BUTTON_BACKGROUND) || _toggleLabels.Text.Equals(HIDE_VALUES))
                 {
-                    RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output, CLICKED_BUTTON_TEXT);
+                    Graphics g = e.Graphics;
+                    T value = isBig ? _game.BigValues[pos] : _game.SmallValues[pos];
+                    Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
+                    StoI.SetImage(output, g, displayRep);
                 }
             };
 
@@ -529,15 +498,6 @@ namespace Countdown.GameController
             }
 
             return output;
-        }
-
-        public void RenderOnControl(T? value, Control control, Color renderingColor)
-        {
-            ImageRepresentation<T>.RenderColor = renderingColor;
-            ImageRepresentation<T>.RenderSize = StoI.DEFAULT_CHARACTER_SIZE;
-            Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
-            StoI.SetImage(control, displayRep);
-            //control.BackgroundImage = displayRep;
         }
     }
 }

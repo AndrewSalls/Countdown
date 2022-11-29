@@ -7,7 +7,7 @@ namespace Countdown.GameController
         private readonly ExpressionInput<T> _baseInput;
         private readonly Button _stepReturn;
         private readonly Button _calculate;
-        private readonly Label _result;
+        private readonly Panel _result;
 
         private readonly ValueGenerator<T> _game;
         private readonly ExpressionConverter<T> _converter;
@@ -79,7 +79,6 @@ namespace Countdown.GameController
                 Enabled = true,
                 ForeColor = GamePage<T>.SPINNER_TEXT,
                 Margin = new Padding(3),
-                TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
 
@@ -106,7 +105,7 @@ namespace Countdown.GameController
                 if(CanCalculate())
                 {
                     T equalTo = Calculate();
-                    mainPage.RenderOnControl(equalTo, _result, GamePage<T>.INFO_TEXT);
+                    //TODO: Render on control
                     if (_game.Goal!.Equals(equalTo))
                         _result.ForeColor = Color.LawnGreen;
                     else

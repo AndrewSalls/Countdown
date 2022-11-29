@@ -60,7 +60,7 @@ namespace Countdown.ValueModel.Representation
             return bmp;
         }
 
-        public static void SetImage(Control ctrl, Image img)
+        public static void SetImage(Panel ctrl, Graphics g, Image img)
         {
             Size cs = ctrl.Size;
             if (img.Size != cs)
@@ -74,16 +74,9 @@ namespace Countdown.ValueModel.Representation
                     img = new Bitmap(img, calc(img.Width), calc(img.Height));
                 }
 
-                //Places image in center of control
-                Bitmap part = new(cs.Width, cs.Height);
-                using (Graphics g = Graphics.FromImage(part))
-                {
-                    g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
-                }
-                img = part;
             }
-            ctrl.BackgroundImageLayout = ImageLayout.Center;
-            ctrl.BackgroundImage = img;
+
+            g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
         }
     }
 }
