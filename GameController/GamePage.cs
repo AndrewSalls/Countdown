@@ -1,7 +1,6 @@
 ﻿using Countdown.ValueImplementations;
 using Countdown.ValueImplementations.Representation;
 using Countdown.ValueModel.Representation;
-using StoI = Countdown.ValueModel.Representation.ImageFactory;
 
 namespace Countdown.GameController
 {
@@ -38,6 +37,8 @@ namespace Countdown.GameController
 
         private TableLayoutPanel _bigValueContainer;
         private TableLayoutPanel _smallValueContainer;
+        private int _bigMinScale;
+        private int _smallMinScale;
 
         private readonly Panel _goalSpinner;
         private readonly System.Windows.Forms.Timer _spinnerTicker;
@@ -70,12 +71,17 @@ namespace Countdown.GameController
 
             Dictionary<Operation<int>, SymbolRepresentation> opDisplay = new()
             {
-                {ops[0], new SymbolRepresentation(StoI.CreateImage("+", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[1], new SymbolRepresentation(StoI.CreateImage("-", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[2], new SymbolRepresentation(StoI.CreateImage("*", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[3], new SymbolRepresentation(StoI.CreateImage("/", PLAIN_TEXT, StoI.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[0], new SymbolRepresentation(ImageFactory.CreateImage("+", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[1], new SymbolRepresentation(ImageFactory.CreateImage("-", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[2], new SymbolRepresentation(ImageFactory.CreateImage("*", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[3], new SymbolRepresentation(ImageFactory.CreateImage("/", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
             };
-            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, bb) => StoI.CreateImage(i.ToString(), BUTTON_TEXT, bb)), opDisplay);
+            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, bb, minScale) => {
+                return ImageFactory.CreateImage(i.ToString(), BUTTON_TEXT, bb, minScale);
+            }, (i, bb) =>
+            {
+                return ImageFactory.MaximizeTextFont(i.ToString(), bb).scale;
+            }), opDisplay);
 
             return new GamePage<int>(game, converter);
         }
@@ -84,6 +90,8 @@ namespace Countdown.GameController
         {
             _game = game;
             _converter = converter;
+            _smallMinScale = -1;
+            _bigMinScale = -1;
 
             double width = Screen.PrimaryScreen.WorkingArea.Width;
             double height = Screen.PrimaryScreen.WorkingArea.Height;
@@ -228,23 +236,23 @@ namespace Countdown.GameController
                     _toggleLabels.Text = SHOW_VALUES;
 
                 for (int i = 0; i < _game.BigValues.Count; i++)
-                    _bigValues[i].Refresh();
+                    _bigValues[i].Invalidate();
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
-                    _smallValues[i].Refresh();
+                    _smallValues[i].Invalidate();
             };
 
             _openSteps.Click += (o, e) =>
             {
                 _window.Controls.Remove(this);
                 _window.Controls.Add(_stepDisplay);
-
             };
 
             _spinnerTicker.Interval = SPINNER_TICK_INTERVAL;
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
+                _goalSpinner.Invalidate();
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
@@ -263,7 +271,10 @@ namespace Countdown.GameController
                 {
                     _spinnerTicker.Stop();
                     for (int i = 0; i < new Random().Next(0, 2); i++)
+                    {
                         _game.RandomizeGoal();
+                        _goalSpinner.Invalidate();
+                    }
 
                     _spinnerTicker.Enabled = false;
                     _spinnerStop.BackColor = STOP_POST_BACKGROUND;
@@ -290,7 +301,7 @@ namespace Countdown.GameController
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    _bigValues[i].Refresh();
+                    _bigValues[i].Invalidate();
                 }
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
@@ -298,7 +309,7 @@ namespace Countdown.GameController
                     _smallValues[i].BackColor = BUTTON_BACKGROUND;
                     _smallValues[i].Enabled = true;
                     _smallValues[i].ForeColor = BUTTON_TEXT;
-                    _smallValues[i].Refresh();
+                    _smallValues[i].Invalidate();
                 }
 
 
@@ -313,10 +324,23 @@ namespace Countdown.GameController
                 _spinnerTicker.Stop();
                 _spinnerTicker.Enabled = false;
                 _spinnerStop.Enabled = false;
-                _goalSpinner.BackgroundImage = null;
+                _goalSpinner.Invalidate();
                 _openSteps.Enabled = false;
                 _enterSolution.Enabled = false;
                 _stepDisplay.Clear();
+            };
+            _goalSpinner.Paint += (o, e) =>
+            {
+                Graphics g = e.Graphics;
+                Color temp = ImageRepresentation<T>.RenderColor;
+                ImageRepresentation<T>.RenderColor = SPINNER_TEXT;
+                if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.RANDOMIZING) || _game.State.Equals(ValueGenerator<T>.GenerationPhase.EVALUATING))
+                {
+                    Image displayRep = _converter.Representer.AsRepresentation(_game.Goal!, _goalSpinner.Size);
+                    g.DrawImage(displayRep, 0, 0, _goalSpinner.Width, _goalSpinner.Height);
+                }
+                else if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.ERROR))
+                    g.DrawImage(_converter.Representer.CreateErrorRepresentation(_goalSpinner.Size), 0, 0, _goalSpinner.Width, _goalSpinner.Height);
             };
 
             _enterSolution.Click += (o, e) =>
@@ -327,6 +351,16 @@ namespace Countdown.GameController
 
             _bigValueContainer = CreateButtonRows(_bigValues, MAX_BIG_ROW_BUTTON_COUNT);
             _smallValueContainer = CreateButtonRows(_smallValues, MAX_SMALL_ROW_BUTTON_COUNT);
+            _bigValueContainer.Resize += (o, e) =>
+            {
+                _bigMinScale = _game.BigValues.Min(v => _converter.Representer.GetMaximalScaling(v, _bigValueContainer.Controls[0].Size));
+                //System.Diagnostics.Debug.WriteLine($"Minimum Big Scaling: {_bigMinScale}");
+            };
+            _smallValueContainer.Resize += (o, e) =>
+            {
+                _smallMinScale = _game.SmallValues.Min(v => _converter.Representer.GetMaximalScaling(v, _bigValueContainer.Controls[0].Size));
+                //System.Diagnostics.Debug.WriteLine($"Minimum Small Scaling: {_smallMinScale}");
+            };
 
             Controls.Add(_bigValueContainer, 2, 3);
             SetRowSpan(_bigValueContainer, 1);
@@ -411,7 +445,16 @@ namespace Countdown.GameController
                 {
                     Graphics g = e.Graphics;
                     T value = isBig ? _game.BigValues[pos] : _game.SmallValues[pos];
-                    Image displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value, output.Size);
+                    Image displayRep;
+                    if (_game.State == ValueGenerator<T>.GenerationPhase.ERROR)
+                        displayRep = _converter.Representer.CreateErrorRepresentation(output.Size);
+                    else
+                    {
+                        if (isBig)
+                            displayRep = _converter.Representer.AsRepresentation(value, output.Size, _bigMinScale);
+                        else
+                            displayRep = _converter.Representer.AsRepresentation(value, output.Size, _smallMinScale);
+                    }
                     g.DrawImage(displayRep, 0, 0, output.Width, output.Height);
                 }
             };

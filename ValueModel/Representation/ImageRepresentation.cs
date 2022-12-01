@@ -66,19 +66,21 @@ namespace Countdown.ValueImplementations.Representation
         public static int RenderSize { get; set; }
 
         private readonly Representation _asRep;
+        private readonly MaximizeScale _scaler;
 
-        public ImageRepresentation(Representation caster)
+        public ImageRepresentation(Representation caster, MaximizeScale scaler)
         {
             RenderColor = GamePage<int>.PLAIN_TEXT;
             RenderSize = ImageFactory.DEFAULT_SIZE.scale;
             _asRep = caster;
+            _scaler = scaler;
         }
 
-        public Image AsRepresentation(T value, Size bBox) => _asRep(value, bBox);
+        public Image AsRepresentation(T value, Size bBox, int minScale = -1) => _asRep(value, bBox, minScale);
 
         public void AppendRepresentation(Control c, ImageTreeNode rep) => c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
 
-        public Image CreateErrorRepresentation() => ImageFactory.CreateImage("ERROR", RenderColor, new Size(RenderSize, RenderSize));
+        public Image CreateErrorRepresentation(Size bBox) => ImageFactory.CreateImage("ERROR", RenderColor, bBox);
 
         public ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation symbol, ImageTreeNode right) => new(left, symbol.Symbol, right);
 
@@ -98,7 +100,12 @@ namespace Countdown.ValueImplementations.Representation
                 Visible = true
             };
         }
+        public int GetMaximalScaling(T value, Size container)
+        {
+            return _scaler(value, container);
+        }
 
-        public delegate Image Representation(T value, Size boundingBox);
+        public delegate Image Representation(T value, Size boundingBox, int minScale = -1);
+        public delegate int MaximizeScale(T value, Size container);
     }
 }
