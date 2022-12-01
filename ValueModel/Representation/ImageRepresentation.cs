@@ -6,36 +6,51 @@ namespace Countdown.ValueImplementations.Representation
     //Represents either an operation f(a, b) or parenthesis (a)
     public class ImageTreeNode
     {
-        public bool IsImage { get { return Left is null; } }
+        public bool IsImage { get { return Leaf != null; } }
         public ImageTreeNode? Left { get; private set; }
         public ImageTreeNode? Middle { get; private set; }
         public ImageTreeNode? Right { get; private set; }
+        public Image? Leaf { get; private set; }
 
-        public ImageTreeNode(ImageTreeNode left, ImageTreeNode middle, ImageTreeNode right) => SetBranch(left, middle, right);
+        public ImageTreeNode(ImageTreeNode? left, ImageTreeNode? middle, ImageTreeNode? right)
+        {
+            if (left == null && middle == null && right == null)
+                throw new ArgumentNullException("Image node contains no base elements.");
 
-        public ImageTreeNode(Image leaf) => SetLeaf(leaf);
+            SetBranch(left, middle, right);
+        }
+
+        public ImageTreeNode(Image leaf)
+        {
+            SetLeaf(leaf);
+        }
 
         public void SetLeaf(Image leaf)
         {
             if(!IsImage)
             {
                 Left = null;
-                Middle = leaf;
+                Middle = null;
                 Right = null;
+                Leaf = leaf;
             }
         }
 
-        public void SetBranch(ImageTreeNode left, Image middle, ImageTreeNode right)
+        public void SetBranch(ImageTreeNode? left, ImageTreeNode? middle, ImageTreeNode? right)
         {
+            if (left == null && middle == null && right == null)
+                throw new ArgumentNullException("Image node contains no base elements.");
+
             Left = left;
             Middle = middle;
             Right = right;
+            Leaf = null;
         }
 
         public Image CombineAsImage()
         {
             if (IsImage)
-                return Middle!;
+                return Leaf!;
             else
             {
                 Image l = Left!.CombineAsImage();
@@ -78,7 +93,13 @@ namespace Countdown.ValueImplementations.Representation
 
         public Image AsRepresentation(T value, Size bBox, int minScale = -1) => _asRep(value, bBox, minScale);
 
-        public void AppendRepresentation(Control c, ImageTreeNode rep) => c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
+        public void AppendRepresentation(Control c, ImageTreeNode rep)
+        {
+            if (c.BackgroundImage != null)
+                c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage());
+            else
+                c.BackgroundImage = ImageFactory.CombineImagesVertical(rep.CombineAsImage());
+        }
 
         public Image CreateErrorRepresentation(Size bBox) => ImageFactory.CreateImage("ERROR", RenderColor, bBox);
 
