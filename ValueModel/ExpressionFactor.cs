@@ -2,7 +2,7 @@
 {
     public class ExpressionFactor<T>
     {
-        public bool IsValue { get; private set; }
+        public bool IsValue { get { return _subEquation == null; } }
         public T Value {
             get
             {
@@ -15,24 +15,21 @@
             {
                 _value = value;
                 _subEquation = null;
-                IsValue = true;
             }
         }
         private T? _value;
-        public Expression<T> SubEquation { get { return _subEquation!; } set { _subEquation = value; _value = default; IsValue = false; } }
+        public Expression<T> SubEquation { get { return _subEquation!; } set { _subEquation = value; _value = default; } }
         private Expression<T>? _subEquation;
 
         public ExpressionFactor(T val)
         {
             _value = val;
             _subEquation = null;
-            IsValue = true;
         }
         public ExpressionFactor(Expression<T> sub)
         {
             _value = default;
             _subEquation = sub;
-            IsValue = false;
         }
     }
 }

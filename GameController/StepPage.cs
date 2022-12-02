@@ -24,6 +24,7 @@
 
             _panelEmbed = new()
             {
+                AutoScroll = true,
                 Dock = DockStyle.Fill
             };
 

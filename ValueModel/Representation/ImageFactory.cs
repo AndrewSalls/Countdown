@@ -1,16 +1,24 @@
-﻿using System.Drawing.Drawing2D;
+﻿using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Xml.Linq;
 
 namespace Countdown.ValueModel.Representation
 {
     public class ImageFactory
     {
-        public const int DEFAULT_CHARACTER_SIZE = 64;
-        public static readonly Font STRING_FONT = new(FontFamily.GenericMonospace, DEFAULT_CHARACTER_SIZE, FontStyle.Regular, GraphicsUnit.Pixel);
+        public static readonly (int scale, Size bBox) DEFAULT_SIZE;
 
-        public static Image CreateImage(string input, Color color, int fontSize)
-        {     
-            Bitmap bmp = new(fontSize, fontSize);
+        static ImageFactory()
+        {
+            DEFAULT_SIZE = (48, TextRenderer.MeasureText("e", new(new FontFamily("Consolas"), 48, FontStyle.Regular, GraphicsUnit.Pixel)));
+        }
+        public static Image CreateImage(string input, Color color, Size boundingBox, int fixedScale = -1)
+        {
+            if (boundingBox.Width == 0 || boundingBox.Height == 0)
+                throw new ArgumentException("Bounding box provided is too small.");
+
+            Bitmap bmp = new(boundingBox.Width, boundingBox.Height);
             Graphics g = Graphics.FromImage(bmp);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -18,17 +26,81 @@ namespace Countdown.ValueModel.Representation
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
-            Font sized = new(STRING_FONT.FontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-            RectangleF bounds = new(new PointF(0, 0), g.MeasureString(input, sized));
+            Font sized;
+
+            if (fixedScale == -1)
+            {
+                (int scale, Size _size) = MaximizeTextFont(input, boundingBox);
+                sized = new(new FontFamily("Consolas"), scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            }
+            else
+                sized = new(new FontFamily("Consolas"), fixedScale, FontStyle.Regular, GraphicsUnit.Pixel);
+
             StringFormat format = new()
             {
                 Alignment = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center
             };
 
-            g.DrawString(input, sized, new SolidBrush(color), bounds, format);
+            g.DrawString(input, sized, new SolidBrush(color), new RectangleF(0, 0, boundingBox.Width, boundingBox.Height), format);
             g.Flush();
             return bmp;
+        }
+        public static Image CreateImage(string input, Color color, int imageRowHeight)
+        {
+            (int scale, Size bBox) = MaximizeVerticalFont(input, imageRowHeight);
+            Bitmap bmp = new(bBox.Width, bBox.Height);
+            Graphics g = Graphics.FromImage(bmp);
+
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+
+            Font sized = new(new FontFamily("Consolas"), scale, FontStyle.Regular, GraphicsUnit.Pixel);
+
+            StringFormat format = new()
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+
+            g.DrawString(input, sized, new SolidBrush(color), new RectangleF(0, 0, bBox.Width, bBox.Height), format);
+            g.Flush();
+            return bmp;
+        }
+
+        public static (int scale, Size bBox) MaximizeTextFont(string input, Size container)
+        {
+            int scale = 0;
+            Size fontSize = TextRenderer.MeasureText(input, new(new FontFamily("Consolas"), 1, FontStyle.Regular, GraphicsUnit.Pixel));
+            Size lastSize;
+            do
+            {
+                lastSize = fontSize;
+                scale += 4;
+                fontSize = TextRenderer.MeasureText(input, new(new FontFamily("Consolas"), scale, FontStyle.Regular, GraphicsUnit.Pixel));
+            }
+            while (fontSize.Width < container.Width && fontSize.Height < container.Height);
+
+            //System.Diagnostics.Debug.WriteLine($"{container} => {Math.Max(scale - 4, 1)} for input {input} with size {lastSize} as compared to {fontSize}");
+            return (Math.Max(scale - 4, 1), lastSize);
+        }
+        public static (int scale, Size bBox) MaximizeVerticalFont(string input, int maxHeight)
+        {
+            int scale = 0;
+            Size fontSize = TextRenderer.MeasureText(input, new(new FontFamily("Consolas"), 1, FontStyle.Regular, GraphicsUnit.Pixel));
+            Size lastSize;
+            do
+            {
+                lastSize = fontSize;
+                scale += 4;
+                fontSize = TextRenderer.MeasureText(input, new(new FontFamily("Consolas"), scale, FontStyle.Regular, GraphicsUnit.Pixel));
+            }
+            while (fontSize.Height < maxHeight);
+
+            //System.Diagnostics.Debug.WriteLine($"{container} => {Math.Max(scale - 4, 1)} for input {input} with size {lastSize} as compared to {fontSize}");
+            return (Math.Max(scale - 4, 1), lastSize);
         }
 
         public static Image CombineImagesHorizontal(params Image[] imgs)
@@ -58,32 +130,6 @@ namespace Countdown.ValueModel.Representation
             }
 
             return bmp;
-        }
-
-        public static void SetImage(Control ctrl, Image img)
-        {
-            Size cs = ctrl.Size;
-            if (img.Size != cs)
-            {
-                //Gets size of control relative to size of image
-                float ratio = Math.Min(cs.Height / (float)img.Height, cs.Width / (float)img.Width);
-                //If image is larger than control, scales image to fit in control
-                if (ratio < 1)
-                {
-                    int calc(float f) => (int)(Math.Ceiling(f / ratio));
-                    img = new Bitmap(img, calc(img.Width), calc(img.Height));
-                }
-
-                //Places image in center of control
-                Bitmap part = new(cs.Width, cs.Height);
-                using (Graphics g = Graphics.FromImage(part))
-                {
-                    g.DrawImageUnscaled(img, (cs.Width - img.Width) / 2, (cs.Height - img.Height) / 2);
-                }
-                img = part;
-            }
-            ctrl.BackgroundImageLayout = ImageLayout.Center;
-            ctrl.BackgroundImage = img;
         }
     }
 }
