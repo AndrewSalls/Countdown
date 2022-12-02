@@ -29,6 +29,7 @@ namespace Countdown.GameController
         public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.35F);
         public static readonly Color CLICKED_BUTTON_TEXT = Color.DarkBlue;
         public static readonly Color BUTTON_BACKGROUND_BACKGROUND = Color.LightBlue;
+        public static readonly int STEP_IMAGE_HEIGHT = 36;
 
        private readonly Form _window;
 
@@ -71,13 +72,16 @@ namespace Countdown.GameController
 
             Dictionary<Operation<int>, SymbolRepresentation> opDisplay = new()
             {
-                {ops[0], new SymbolRepresentation(ImageFactory.CreateImage("+", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[1], new SymbolRepresentation(ImageFactory.CreateImage("-", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[2], new SymbolRepresentation(ImageFactory.CreateImage("*", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
-                {ops[3], new SymbolRepresentation(ImageFactory.CreateImage("/", PLAIN_TEXT, ImageFactory.DEFAULT_SIZE.bBox), (l, s, r) => new ImageTreeNode(l, s, r))},
+                {ops[0], new SymbolRepresentation("+", (c, mh) => ImageFactory.CreateImage("+", PLAIN_TEXT, mh))},
+                {ops[1], new SymbolRepresentation("-", (c, mh) => ImageFactory.CreateImage("-", PLAIN_TEXT, mh))},
+                {ops[2], new SymbolRepresentation("*", (c, mh) => ImageFactory.CreateImage("*", PLAIN_TEXT, mh))},
+                {ops[3], new SymbolRepresentation("/", (c, mh) => ImageFactory.CreateImage("/", PLAIN_TEXT, mh))},
             };
-            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, bb, minScale) => {
-                return ImageFactory.CreateImage(i.ToString(), BUTTON_TEXT, bb, minScale);
+            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, c, bb, minScale) => {
+                if (bb.Width == 0 || bb.Height == 0)
+                    return ImageFactory.CreateImage(i.ToString(), c, minScale);
+
+                return ImageFactory.CreateImage(i.ToString(), c, bb, minScale);
             }, (i, bb) =>
             {
                 return ImageFactory.MaximizeTextFont(i.ToString(), bb).scale;
@@ -282,7 +286,7 @@ namespace Countdown.GameController
 
                     var steps = _game.GetIntendedSolution();
 
-                    _stepDisplay.Display(_converter.CreateDisplayableRepresentation(steps));
+                    _stepDisplay.Display(_converter.CreateDisplayableRepresentation(steps, PLAIN_TEXT, STEP_IMAGE_HEIGHT));
 
                     _openSteps.Enabled = true;
                     _enterSolution.Enabled = true;
@@ -332,15 +336,13 @@ namespace Countdown.GameController
             _goalSpinner.Paint += (o, e) =>
             {
                 Graphics g = e.Graphics;
-                Color temp = ImageRepresentation<T>.RenderColor;
-                ImageRepresentation<T>.RenderColor = SPINNER_TEXT;
                 if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.RANDOMIZING) || _game.State.Equals(ValueGenerator<T>.GenerationPhase.EVALUATING))
                 {
-                    Image displayRep = _converter.Representer.AsRepresentation(_game.Goal!, _goalSpinner.Size);
+                    Image displayRep = _converter.Representer.AsRepresentation(_game.Goal!, SPINNER_TEXT, _goalSpinner.Size);
                     g.DrawImage(displayRep, 0, 0, _goalSpinner.Width, _goalSpinner.Height);
                 }
                 else if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.ERROR))
-                    g.DrawImage(_converter.Representer.CreateErrorRepresentation(_goalSpinner.Size), 0, 0, _goalSpinner.Width, _goalSpinner.Height);
+                    g.DrawImage(_converter.Representer.CreateErrorRepresentation(SPINNER_TEXT, _goalSpinner.Size), 0, 0, _goalSpinner.Width, _goalSpinner.Height);
             };
 
             _enterSolution.Click += (o, e) =>
@@ -447,13 +449,13 @@ namespace Countdown.GameController
                     T value = isBig ? _game.BigValues[pos] : _game.SmallValues[pos];
                     Image displayRep;
                     if (_game.State == ValueGenerator<T>.GenerationPhase.ERROR)
-                        displayRep = _converter.Representer.CreateErrorRepresentation(output.Size);
+                        displayRep = _converter.Representer.CreateErrorRepresentation(BUTTON_TEXT, output.Size);
                     else
                     {
                         if (isBig)
-                            displayRep = _converter.Representer.AsRepresentation(value, output.Size, _bigMinScale);
+                            displayRep = _converter.Representer.AsRepresentation(value, BUTTON_TEXT, output.Size, _bigMinScale);
                         else
-                            displayRep = _converter.Representer.AsRepresentation(value, output.Size, _smallMinScale);
+                            displayRep = _converter.Representer.AsRepresentation(value, BUTTON_TEXT, output.Size, _smallMinScale);
                     }
                     g.DrawImage(displayRep, 0, 0, output.Width, output.Height);
                 }

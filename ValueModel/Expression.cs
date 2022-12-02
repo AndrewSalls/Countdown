@@ -30,6 +30,7 @@
 
             foreach (Expression<T> step in steps)
             {
+                System.Diagnostics.Debug.WriteLine(subSteps.Count);
                 int leftSubIndex = subSteps.FindIndex(e => e.Result!.Equals(step.Left.Value));
                 int rightSubIndex = subSteps.FindLastIndex(e => e.Result!.Equals(step.Right.Value));
 
@@ -42,19 +43,14 @@
                     {
                         subSteps.Add(new Expression<T>(step.Operation, new ExpressionFactor<T>(subSteps[leftSubIndex]), new ExpressionFactor<T>(subSteps[rightSubIndex])));
                         if (rightSubIndex < leftSubIndex)
-                        {
-                            subSteps.RemoveAt(leftSubIndex);
-                            subSteps.RemoveAt(rightSubIndex);
-                        }
-                        else
-                        {
-                            subSteps.RemoveAt(rightSubIndex);
-                            subSteps.RemoveAt(leftSubIndex);
-                        }
+                            (rightSubIndex, leftSubIndex) = (leftSubIndex, rightSubIndex);
+
+                        subSteps.RemoveAt(rightSubIndex);
+                        subSteps.RemoveAt(leftSubIndex);
                     }
                     else
                     {
-                        subSteps.Add(new Expression<T>(step.Operation, new ExpressionFactor<T>(subSteps[leftSubIndex]), step.Right!));
+                        subSteps.Add(new Expression<T>(step.Operation, new ExpressionFactor<T>(subSteps[leftSubIndex]), step.Right!.Value));
                         subSteps.RemoveAt(leftSubIndex);
                     }
                 }
@@ -62,11 +58,11 @@
                 {
                     if (rightSubIndex > -1)
                     {
-                        subSteps.Add(new Expression<T>(step.Operation, step.Left!, new ExpressionFactor<T>(subSteps[rightSubIndex])));
+                        subSteps.Add(new Expression<T>(step.Operation, step.Left!.Value, new ExpressionFactor<T>(subSteps[rightSubIndex])));
                         subSteps.RemoveAt(rightSubIndex);
                     }
                     else
-                        subSteps.Add(new Expression<T>(step.Operation, step.Left!, step.Right!));
+                        subSteps.Add(step);
                 }
             }
 

@@ -1,4 +1,6 @@
-﻿namespace Countdown.ValueImplementations.Representation
+﻿using Countdown.ValueModel.Representation;
+
+namespace Countdown.ValueImplementations.Representation
 {
     public class ExpressionConverter<T>
     {
@@ -11,40 +13,38 @@
             _operationRepresentation = operationRepresentations;
         }
 
-        public ImageTreeNode ConvertToRepresentation(Expression<T> exp, Size bBox)
+        public ImageTreeNode<T> ConvertToRepresentation(Expression<T> exp, int imageRowHeight, bool treatSimple = false)
         {
-            ImageTreeNode left, right;
+            ImageTreeNode<T> left, right;
 
-            if(exp.Left.IsValue && exp.Right.IsValue)
-            {
-                return Representer.CreateExpression(Representer.AsRepresentation(exp.Left.Value, bBox), _operationRepresentation[exp.Operation], Representer.AsRepresentation(exp.Right.Value, bBox));
-            }
+            if(treatSimple || (exp.Left.IsValue && exp.Right.IsValue))
+                return Representer.CreateExpression(new(exp.Left.Value, Representer), _operationRepresentation[exp.Operation], new(exp.Right.Value, Representer));
 
             if (!exp.Left.IsValue)
             {
                 Expression<T> leftEq = exp.Left.SubEquation;
                 Operation<T> leftOp = leftEq.Operation;
                 if (leftOp.Priority < exp.Operation.Priority)
-                    left = Representer.Parenthesize(ConvertToRepresentation(leftEq, bBox));
+                    left = Representer.Parenthesize(ConvertToRepresentation(leftEq, imageRowHeight));
                 else
-                    left = ConvertToRepresentation(leftEq, bBox);
+                    left = ConvertToRepresentation(leftEq, imageRowHeight);
             }
             else
-                left = Representer.AsRepresentation(exp.Left.Value, bBox);
+                left = new(exp.Left.Value, Representer);
 
             if (!exp.Right.IsValue)
             {
                 Expression<T> rightEq = exp.Right.SubEquation;
                 Operation<T> rightOp = rightEq.Operation;
                 if (rightOp.Priority < exp.Operation.Priority)
-                    right = Representer.Parenthesize(ConvertToRepresentation(rightEq, bBox));
+                    right = Representer.Parenthesize(ConvertToRepresentation(rightEq, imageRowHeight));
                 else if (rightOp.Priority == exp.Operation.Priority && !exp.Operation.IsAssociative)
-                    right = Representer.Parenthesize(ConvertToRepresentation(rightEq, bBox));
+                    right = Representer.Parenthesize(ConvertToRepresentation(rightEq, imageRowHeight));
                 else
-                    right = ConvertToRepresentation(rightEq, bBox);
+                    right = ConvertToRepresentation(rightEq, imageRowHeight);
             }
             else
-                right = Representer.AsRepresentation(exp.Right.Value, bBox);
+                right = new(exp.Right.Value, Representer);
 
             if (Representer.IsParenthesized(left) && !Representer.IsParenthesized(right) && exp.Operation.IsCommutative)
                 (left, right) = (right, left);
@@ -52,32 +52,17 @@
             return Representer.CreateExpression(left, _operationRepresentation[exp.Operation], right);
         }
 
-        public Expression<T> ConvertFromRepresentation(ImageTreeNode expression)
-        {
-            //Find any equations in parenthesis and convert those, and repeat until there are no operations remaining
-            throw new NotImplementedException();
-        }
-
-        private Expression<T> ConvertFromSimpleEquation(ImageTreeNode expression)
-        {
-            //Converts equation where the order of operations does not matter
-            throw new NotImplementedException();
-        }
-
-        public Control CreateDisplayableRepresentation(IReadOnlyList<Expression<T>> steps)
+        public Control CreateDisplayableRepresentation(IReadOnlyList<Expression<T>> steps, Color color, int imageRowHeight)
         {
             Control output = Representer.CreateDisplayRepresentationBase();
 
             for (int i = 0; i < steps.Count; i++)
             {
-                Representer.AppendRepresentation(output,
-                    Representer.SetEqualTo(
-                        Representer.CreateExpression(Representer.AsRepresentation(steps[i].Left.Value, output.Size),
-                                                     _operationRepresentation[steps[i].Operation],
-                                                     Representer.AsRepresentation(steps[i].Right.Value, output.Size)),
-                        Representer.AsRepresentation(steps[i].Result, output.Size)));
+                Representer.AppendRepresentation(output, Representer.SetEqualTo(ConvertToRepresentation(steps[i], imageRowHeight, true),
+                                                         new(steps[i].Result, Representer)), color, imageRowHeight);
             }
-            Representer.AppendRepresentation(output, Representer.SetEqualTo(ConvertToRepresentation(Expression<T>.ConvertStepsToEquation(steps), output.Size), Representer.AsRepresentation(steps[steps.Count - 1].Result, output.Size)));
+            Representer.AppendRepresentation(output, Representer.SetEqualTo(ConvertToRepresentation(Expression<T>.ConvertStepsToEquation(steps), imageRowHeight),
+                                                                            new(steps[steps.Count - 1].Result, Representer)), color, imageRowHeight);
 
             return output;
         }
