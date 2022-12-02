@@ -1,89 +1,57 @@
-﻿using Countdown.ValueImplementations.Values;
+﻿using Countdown.GameController;
+using Countdown.ValueModel.Representation;
 
 namespace Countdown.ValueImplementations.Representation
 {
-    public class ImageTreeNode
+    public class ImageRepresentation<T>
     {
-        public bool IsImage { get { return Left is null; } }
-        public ImageTreeNode? Left { get; private set; }
-        public ImageTreeNode? Middle { get; private set; }
-        public ImageTreeNode? Right { get; private set; }
-        public Image? Leaf { get; private set; }
+        private readonly Representation _asRep;
+        private readonly MaximizeScale _scaler;
 
-        public ImageTreeNode(ImageTreeNode left, ImageTreeNode middle, ImageTreeNode right) => SetBranch(left, middle, right);
-
-        public ImageTreeNode(Image leaf) => SetLeaf(leaf);
-
-        public void SetLeaf(Image leaf)
+        public ImageRepresentation(Representation caster, MaximizeScale scaler)
         {
-            if(!IsImage)
+            _asRep = caster;
+            _scaler = scaler;
+        }
+
+        public Image AsRepresentation(T value, Color color, Size bBox, int minScale = -1) => _asRep(value, color, bBox, minScale);
+        public Image AsRepresentation(T value, Color color, int imageRowHeight) => _asRep(value, color, new Size(), imageRowHeight);
+
+        public ImageTreeNode<T> CreateLeftParenthesis() => new(new SymbolRepresentation("(", (c, mh) => ImageFactory.CreateImage("(", c, mh)));
+        public ImageTreeNode<T> CreateRightParenthesis() => new(new SymbolRepresentation(")", (c, mh) => ImageFactory.CreateImage(")", c, mh)));
+        public ImageTreeNode<T> CreateEqualsSign() => new(new SymbolRepresentation("=", (c, mh) => ImageFactory.CreateImage("=", c, mh)));
+
+        public void AppendRepresentation(Control c, ImageTreeNode<T> rep, Color color, int imageRowHeight)
+        {
+            if (c.BackgroundImage != null)
+                c.BackgroundImage = ImageFactory.CombineImagesVertical(c.BackgroundImage, rep.CombineAsImage(color, imageRowHeight));
+            else
+                c.BackgroundImage = ImageFactory.CombineImagesVertical(rep.CombineAsImage(color, imageRowHeight));
+        }
+
+        public Image CreateErrorRepresentation(Color color, Size bBox) => ImageFactory.CreateImage("ERROR", color, bBox);
+
+        public ImageTreeNode<T> CreateExpression(ImageTreeNode<T> left, SymbolRepresentation symbol, ImageTreeNode<T> right) => new(left, new(symbol), right);
+
+        public bool IsParenthesized(ImageTreeNode<T> rep) => !rep.IsLeaf && rep.Left!.IsLeaf && rep.Left.Leaf!.IsEquivalent("(") && rep.Right!.IsLeaf && rep.Right.Leaf!.IsEquivalent(")");
+
+        public ImageTreeNode<T> Parenthesize(ImageTreeNode<T> rep) => new(CreateLeftParenthesis(), rep, CreateRightParenthesis());
+
+        public ImageTreeNode<T> SetEqualTo(ImageTreeNode<T> exp, ImageTreeNode<T> equalTo) => new(exp, CreateEqualsSign(), equalTo);
+
+        public Control CreateDisplayRepresentationBase()
+        {
+            return new Panel()
             {
-                Left = null;
-                Middle = null;
-                Right = null;
-                Leaf = leaf;
-            }
+                BackgroundImageLayout = ImageLayout.None,
+                BackColor = GamePage<T>.INFO_BACKGROUND,
+                Dock = DockStyle.Fill,
+                Visible = true
+            };
         }
+        public int GetMaximalScaling(T value, Size container) => _scaler(value, container);
 
-        public void SetBranch(ImageTreeNode left, ImageTreeNode middle, ImageTreeNode right)
-        {
-            Left = left;
-            Middle = middle;
-            Right = right;
-            Leaf = null;
-        }
-    }
-
-    public class ImageRepresentation<T> : IRepresentation<T, ImageTreeNode>
-    {
-        public override ImageTreeNode AsRepresentation(T value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void AppendRepresentation(Control c, ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode CreateErrorRepresentation()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode CreateExpression(ImageTreeNode left, SymbolRepresentation<ImageTreeNode> symbol, ImageTreeNode right)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool IsParenthesized(ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode Parenthesize(ImageTreeNode rep)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ImageTreeNode SetEqualTo(ImageTreeNode exp, ImageTreeNode equalTo)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override T FromRepresentation(ImageTreeNode representation)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void AppendLineBreak(Control c)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override Control CreateDisplayRepresentationBase()
-        {
-            throw new NotImplementedException();
-        }
+        public delegate Image Representation(T value, Color color, Size boundingBox, int minScale = -1);
+        public delegate int MaximizeScale(T value, Size container);
     }
 }

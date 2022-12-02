@@ -1,19 +1,16 @@
-﻿namespace Countdown.ValueImplementations.Representation
+﻿namespace Countdown.ValueModel.Representation
 {
-    public class SymbolRepresentation<U>
+    public class SymbolRepresentation
     {
-        public U Symbol { get; private set; }
-        public Apply ApplySymbol { get; private set; }
-        public OperatesOn IsOperator { get; private set; }
+        public string Name { get; private set; }
+        public Representation Symbol { get; private set; }
 
-        public SymbolRepresentation(U symbol, Apply app, OperatesOn rec)
+        public SymbolRepresentation(string name, Representation symbol)
         {
+            Name = name;
             Symbol = symbol;
-            ApplySymbol = app;
-            IsOperator = rec;
         }
 
-        public delegate U Apply(U left, U right);
-        public delegate bool OperatesOn(U rep);
+        public delegate Image Representation(Color color, int imageRowHeight);
     }
 }

@@ -1,17 +1,17 @@
 ﻿using Countdown.ValueImplementations;
 using Countdown.ValueImplementations.Representation;
-using System.Text.RegularExpressions;
+using Countdown.ValueModel.Representation;
 
 namespace Countdown.GameController
 {
-    public class GamePage<T, U>
+    public class GamePage<T> : TableLayoutPanel
     {
-        public static readonly string SHOW_VALUES = "Show Button Values";
-        public static readonly string HIDE_VALUES = "Hide Button Values";
-        public static readonly int SPINNER_TICK_INTERVAL = 200;
-        public static readonly int MAX_BIG_ROW_BUTTON_COUNT = 4;
-        public static readonly int MAX_SMALL_ROW_BUTTON_COUNT = 10;
-        public static readonly string STOP_TEXT_WORDS = "STOP!";
+        public const string SHOW_VALUES = "Show Button Values";
+        public const string HIDE_VALUES = "Hide Button Values";
+        public const int SPINNER_TICK_INTERVAL = 200;
+        public const int MAX_BIG_ROW_BUTTON_COUNT = 4;
+        public const int MAX_SMALL_ROW_BUTTON_COUNT = 10;
+        public const string STOP_TEXT_WORDS = "STOP!";
         public static readonly Color BACKGROUND = Color.FromArgb(255, 255, 240);
         public static readonly Color STEPS_BACKGROUND = Color.LightGoldenrodYellow;
         public static readonly Color SPINNER_BACKGROUND = Color.Black;
@@ -25,20 +25,23 @@ namespace Countdown.GameController
         public static readonly Color INFO_TEXT = Color.Black;
         public static readonly Color BUTTON_BACKGROUND = Color.DarkBlue;
         public static readonly Color BUTTON_TEXT = Color.White;
-        public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.5F);
+        public static readonly Color BUTTON_HIGHLIGHTED_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.15F);
+        public static readonly Color CLICKED_BUTTON_BACKGROUND = ControlPaint.Light(BUTTON_BACKGROUND, 0.35F);
         public static readonly Color CLICKED_BUTTON_TEXT = Color.DarkBlue;
         public static readonly Color BUTTON_BACKGROUND_BACKGROUND = Color.LightBlue;
+        public static readonly int STEP_IMAGE_HEIGHT = 36;
 
-        private readonly TableLayoutPanel _windowContainer;
-        private readonly Form _window;
+       private readonly Form _window;
 
-        private readonly List<Button> _bigValues;
-        private readonly List<Button> _smallValues;
+        private readonly List<Panel> _bigValues;
+        private readonly List<Panel> _smallValues;
 
         private TableLayoutPanel _bigValueContainer;
         private TableLayoutPanel _smallValueContainer;
+        private int _bigMinScale;
+        private int _smallMinScale;
 
-        private readonly Label _goalSpinner;
+        private readonly Panel _goalSpinner;
         private readonly System.Windows.Forms.Timer _spinnerTicker;
 
         private readonly Button _reset;
@@ -47,13 +50,13 @@ namespace Countdown.GameController
         private readonly Button _toggleLabels;
         private readonly Button _enterSolution;
 
-        private readonly StepPage<T, U> _stepDisplay;
-        private readonly SolutionPage<T, U> _solutionDisplay;
+        private readonly StepPage<T> _stepDisplay;
+        private readonly SolutionPage<T> _solutionDisplay;
 
         private readonly ValueGenerator<T> _game;
-        private readonly ExpressionConverter<T, U> _converter;
+        private readonly ExpressionConverter<T> _converter;
 
-        public static GamePage<int, string> CreateDefaultGame()
+        public static GamePage<int> CreateDefaultGame()
         {
             List<Operation<int>> ops = new()
             {
@@ -67,22 +70,32 @@ namespace Countdown.GameController
                 new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
                 ops, 6, 6);
 
-            Dictionary<Operation<int>, SymbolRepresentation<string>> opDisplay = new()
+            Dictionary<Operation<int>, SymbolRepresentation> opDisplay = new()
             {
-                {ops[0], new SymbolRepresentation<string>("+", (l, r) => $"{l} + {r}", rep => Regex.IsMatch(rep, "^.+\\+.+$"))},
-                {ops[1], new SymbolRepresentation<string>("-", (l, r) => $"{l} - {r}", rep => Regex.IsMatch(rep, "^.+-.+$"))},
-                {ops[2], new SymbolRepresentation<string>("*", (l, r) => $"{l} * {r}", rep => Regex.IsMatch(rep, "^.+\\*.+$"))},
-                {ops[3], new SymbolRepresentation<string>("/", (l, r) => $"{l} / {r}", rep => Regex.IsMatch(rep, "^.+/.+$"))},
+                {ops[0], new SymbolRepresentation("+", (c, mh) => ImageFactory.CreateImage("+", PLAIN_TEXT, mh))},
+                {ops[1], new SymbolRepresentation("-", (c, mh) => ImageFactory.CreateImage("-", PLAIN_TEXT, mh))},
+                {ops[2], new SymbolRepresentation("*", (c, mh) => ImageFactory.CreateImage("*", PLAIN_TEXT, mh))},
+                {ops[3], new SymbolRepresentation("/", (c, mh) => ImageFactory.CreateImage("/", PLAIN_TEXT, mh))},
             };
-            ExpressionConverter<int, string> converter = new(new StringRepresentation<int>(i => i.ToString(), str => int.Parse(str)), opDisplay);
+            ExpressionConverter<int> converter = new(new ImageRepresentation<int>((i, c, bb, minScale) => {
+                if (bb.Width == 0 || bb.Height == 0)
+                    return ImageFactory.CreateImage(i.ToString(), c, minScale);
 
-            return new GamePage<int, string>(game, converter);
+                return ImageFactory.CreateImage(i.ToString(), c, bb, minScale);
+            }, (i, bb) =>
+            {
+                return ImageFactory.MaximizeTextFont(i.ToString(), bb).scale;
+            }), opDisplay);
+
+            return new GamePage<int>(game, converter);
         }
 
-        public GamePage(ValueGenerator<T> game, ExpressionConverter<T, U> converter)
+        public GamePage(ValueGenerator<T> game, ExpressionConverter<T> converter)
         {
             _game = game;
             _converter = converter;
+            _smallMinScale = -1;
+            _bigMinScale = -1;
 
             double width = Screen.PrimaryScreen.WorkingArea.Width;
             double height = Screen.PrimaryScreen.WorkingArea.Height;
@@ -99,34 +112,32 @@ namespace Countdown.GameController
                 Height = (int)Math.Round(height * 0.8)
             };
 
-            _windowContainer = new()
-            {
-                RowCount = 9,
-                ColumnCount = 7,
-                BackColor = BACKGROUND,
-                Dock = DockStyle.Fill,
-                Enabled = true,
-                Visible = true
-            };
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 10));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 35));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 15));
-            _windowContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 2));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
-            _windowContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            RowCount = 9;
+            ColumnCount = 7;
+            BackColor = BACKGROUND;
+            Dock = DockStyle.Fill;
+            Enabled = true;
+            Visible = true;
 
-            _stepDisplay = new StepPage<T, U>(_window, _windowContainer);
-            _solutionDisplay = new SolutionPage<T, U>();
+            RowStyles.Add(new RowStyle(SizeType.Percent, 2));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 10));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 2));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 30));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 2));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 35));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 2));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 15));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 2));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10));
+
+            _stepDisplay = new StepPage<T>(_window, this);
+            _solutionDisplay = new SolutionPage<T>(_window, this, _game, _converter);
 
             _bigValues = new();
             _smallValues = new();
@@ -165,7 +176,6 @@ namespace Countdown.GameController
                 Dock = DockStyle.Fill,
                 Enabled = true,
                 ForeColor = SPINNER_TEXT,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
             _spinnerTicker = new();
@@ -225,57 +235,28 @@ namespace Countdown.GameController
             _toggleLabels.Click += (o, e) =>
             {
                 if (_toggleLabels.Text.Equals(SHOW_VALUES))
-                {
-                    for (int i = 0; i < _bigValues.Count; i++)
-                    {
-                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            RenderOnControl(_game.BigValues[i], _bigValues[i]);
-                    }
-
-                    for (int i = 0; i < _smallValues.Count; i++)
-                    {
-                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                            RenderOnControl(_game.SmallValues[i], _smallValues[i]);
-                    }
-
                     _toggleLabels.Text = HIDE_VALUES;
-                }
                 else
-                {
-                    for (int i = 0; i < _bigValues.Count; i++)
-                    {
-                        if (!_bigValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                        {
-                            _bigValues[i].Text = "";
-                            _bigValues[i].Image = null;
-                        }
-                    }
-
-                    for (int i = 0; i < _smallValues.Count; i++)
-                    {
-                        if (!_smallValues[i].BackColor.Equals(CLICKED_BUTTON_BACKGROUND))
-                        {
-                            _smallValues[i].Text = "";
-                            _smallValues[i].Image = null;
-                        }
-                    }
-
                     _toggleLabels.Text = SHOW_VALUES;
-                }
+
+                for (int i = 0; i < _game.BigValues.Count; i++)
+                    _bigValues[i].Invalidate();
+
+                for (int i = 0; i < _game.SmallValues.Count; i++)
+                    _smallValues[i].Invalidate();
             };
 
             _openSteps.Click += (o, e) =>
             {
-                _window.Controls.Remove(_windowContainer);
+                _window.Controls.Remove(this);
                 _window.Controls.Add(_stepDisplay);
-
             };
 
             _spinnerTicker.Interval = SPINNER_TICK_INTERVAL;
             _spinnerTicker.Tick += (o, e) =>
             {
                 _game.RandomizeGoal();
-                RenderOnControl(_game.Goal, _goalSpinner);
+                _goalSpinner.Invalidate();
                 _spinnerStop.Enabled = true;
             };
             _spinnerStop.Click += (o, e) =>
@@ -296,7 +277,7 @@ namespace Countdown.GameController
                     for (int i = 0; i < new Random().Next(0, 2); i++)
                     {
                         _game.RandomizeGoal();
-                        RenderOnControl(_game.Goal, _goalSpinner);
+                        _goalSpinner.Invalidate();
                     }
 
                     _spinnerTicker.Enabled = false;
@@ -305,7 +286,7 @@ namespace Countdown.GameController
 
                     var steps = _game.GetIntendedSolution();
 
-                    _stepDisplay.Display(_converter.CreateDisplayableRepresentation(steps));
+                    _stepDisplay.Display(_converter.CreateDisplayableRepresentation(steps, PLAIN_TEXT, STEP_IMAGE_HEIGHT));
 
                     _openSteps.Enabled = true;
                     _enterSolution.Enabled = true;
@@ -324,13 +305,7 @@ namespace Countdown.GameController
                     _bigValues[i].BackColor = BUTTON_BACKGROUND;
                     _bigValues[i].Enabled = true;
                     _bigValues[i].ForeColor = BUTTON_TEXT;
-                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
-                        RenderOnControl(_game.BigValues[i], _bigValues[i]);
-                    else
-                    {
-                        _bigValues[i].Text = "";
-                        _bigValues[i].Image = null;
-                    }
+                    _bigValues[i].Invalidate();
                 }
 
                 for (int i = 0; i < _game.SmallValues.Count; i++)
@@ -338,104 +313,114 @@ namespace Countdown.GameController
                     _smallValues[i].BackColor = BUTTON_BACKGROUND;
                     _smallValues[i].Enabled = true;
                     _smallValues[i].ForeColor = BUTTON_TEXT;
-                    if (_toggleLabels.Text.Equals(HIDE_VALUES))
-                        RenderOnControl(_game.SmallValues[i], _smallValues[i]);
-                    else
-                    {
-                        _smallValues[i].Text = "";
-                        _smallValues[i].Image = null;
-                    }
+                    _smallValues[i].Invalidate();
                 }
 
 
-                _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
-                _windowContainer.SetRowSpan(_bigValueContainer, 1);
-                _windowContainer.SetColumnSpan(_bigValueContainer, 3);
+                Controls.Add(_bigValueContainer, 2, 3);
+                SetRowSpan(_bigValueContainer, 1);
+                SetColumnSpan(_bigValueContainer, 3);
 
-                _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
-                _windowContainer.SetRowSpan(_smallValueContainer, 1);
-                _windowContainer.SetColumnSpan(_smallValueContainer, 5);
+                Controls.Add(_smallValueContainer, 1, 5);
+                SetRowSpan(_smallValueContainer, 1);
+                SetColumnSpan(_smallValueContainer, 5);
 
-                _goalSpinner.Text = "";
                 _spinnerTicker.Stop();
                 _spinnerTicker.Enabled = false;
                 _spinnerStop.Enabled = false;
+                _goalSpinner.Invalidate();
                 _openSteps.Enabled = false;
                 _enterSolution.Enabled = false;
                 _stepDisplay.Clear();
             };
+            _goalSpinner.Paint += (o, e) =>
+            {
+                Graphics g = e.Graphics;
+                if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.RANDOMIZING) || _game.State.Equals(ValueGenerator<T>.GenerationPhase.EVALUATING))
+                {
+                    Image displayRep = _converter.Representer.AsRepresentation(_game.Goal!, SPINNER_TEXT, _goalSpinner.Size);
+                    g.DrawImage(displayRep, 0, 0, _goalSpinner.Width, _goalSpinner.Height);
+                }
+                else if (_game.State.Equals(ValueGenerator<T>.GenerationPhase.ERROR))
+                    g.DrawImage(_converter.Representer.CreateErrorRepresentation(SPINNER_TEXT, _goalSpinner.Size), 0, 0, _goalSpinner.Width, _goalSpinner.Height);
+            };
 
             _enterSolution.Click += (o, e) =>
             {
-                _window.Controls.Remove(_windowContainer);
+                _window.Controls.Remove(this);
                 _window.Controls.Add(_solutionDisplay);
             };
 
             _bigValueContainer = CreateButtonRows(_bigValues, MAX_BIG_ROW_BUTTON_COUNT);
             _smallValueContainer = CreateButtonRows(_smallValues, MAX_SMALL_ROW_BUTTON_COUNT);
+            _bigValueContainer.Resize += (o, e) =>
+            {
+                _bigMinScale = _game.BigValues.Min(v => _converter.Representer.GetMaximalScaling(v, _bigValueContainer.Controls[0].Size));
+                //System.Diagnostics.Debug.WriteLine($"Minimum Big Scaling: {_bigMinScale}");
+            };
+            _smallValueContainer.Resize += (o, e) =>
+            {
+                _smallMinScale = _game.SmallValues.Min(v => _converter.Representer.GetMaximalScaling(v, _bigValueContainer.Controls[0].Size));
+                //System.Diagnostics.Debug.WriteLine($"Minimum Small Scaling: {_smallMinScale}");
+            };
 
-            _windowContainer.Controls.Add(_bigValueContainer, 2, 3);
-            _windowContainer.SetRowSpan(_bigValueContainer, 1);
-            _windowContainer.SetColumnSpan(_bigValueContainer, 3);
+            Controls.Add(_bigValueContainer, 2, 3);
+            SetRowSpan(_bigValueContainer, 1);
+            SetColumnSpan(_bigValueContainer, 3);
 
-            _windowContainer.Controls.Add(_smallValueContainer, 1, 5);
-            _windowContainer.SetRowSpan(_smallValueContainer, 1);
-            _windowContainer.SetColumnSpan(_smallValueContainer, 5);
+            Controls.Add(_smallValueContainer, 1, 5);
+            SetRowSpan(_smallValueContainer, 1);
+            SetColumnSpan(_smallValueContainer, 5);
 
-            _windowContainer.Controls.Add(_openSteps, 4, 1);
-            _windowContainer.SetRowSpan(_openSteps, 1);
-            _windowContainer.SetColumnSpan(_openSteps, 1);
+            Controls.Add(_openSteps, 4, 1);
+            SetRowSpan(_openSteps, 1);
+            SetColumnSpan(_openSteps, 1);
 
-            _windowContainer.Controls.Add(_toggleLabels, 3, 1);
-            _windowContainer.SetRowSpan(_toggleLabels, 1);
-            _windowContainer.SetColumnSpan(_toggleLabels, 1);
+            Controls.Add(_toggleLabels, 3, 1);
+            SetRowSpan(_toggleLabels, 1);
+            SetColumnSpan(_toggleLabels, 1);
 
-            _windowContainer.Controls.Add(_goalSpinner, 5, 1);
-            _windowContainer.SetRowSpan(_goalSpinner, 1);
-            _windowContainer.SetColumnSpan(_goalSpinner, 1);
+            Controls.Add(_goalSpinner, 5, 1);
+            SetRowSpan(_goalSpinner, 1);
+            SetColumnSpan(_goalSpinner, 1);
 
-            _windowContainer.Controls.Add(_reset, 1, 3);
-            _windowContainer.SetRowSpan(_reset, 1);
-            _windowContainer.SetColumnSpan(_reset, 1);
+            Controls.Add(_reset, 1, 3);
+            SetRowSpan(_reset, 1);
+            SetColumnSpan(_reset, 1);
 
-            _windowContainer.Controls.Add(_spinnerStop, 5, 3);
-            _windowContainer.SetRowSpan(_spinnerStop, 1);
-            _windowContainer.SetColumnSpan(_spinnerStop, 1);
+            Controls.Add(_spinnerStop, 5, 3);
+            SetRowSpan(_spinnerStop, 1);
+            SetColumnSpan(_spinnerStop, 1);
 
-            _windowContainer.Controls.Add(_enterSolution, 2, 7);
-            _windowContainer.SetRowSpan(_enterSolution, 1);
-            _windowContainer.SetColumnSpan(_enterSolution, 3);
+            Controls.Add(_enterSolution, 2, 7);
+            SetRowSpan(_enterSolution, 1);
+            SetColumnSpan(_enterSolution, 3);
 
-            _window.Controls.Add(_windowContainer);
+            _window.Controls.Add(this);
             _window.Show();
             _window.BringToFront();
             _window.Focus();
         }
 
-        private Button CreateButton(int pos, bool isBig)
+        private Panel CreateButton(int pos, bool isBig)
         {
-            Button output = new()
+            Panel output = new()
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right,
                 BackColor = BUTTON_BACKGROUND,
                 Enabled = true,
-                FlatStyle = FlatStyle.Flat,
                 ForeColor = BUTTON_TEXT,
                 Margin = new Padding(0),
                 Padding = new Padding(0),
                 TabStop = false,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Visible = true
             };
-            output.FlatAppearance.BorderSize = 0;
-            output.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
 
             output.Click += (o, e) =>
             {
                 output.BackColor = CLICKED_BUTTON_BACKGROUND;
                 output.ForeColor = CLICKED_BUTTON_TEXT;
                 _game.ChooseNumber(pos, isBig);
-                RenderOnControl(isBig ? _game.BigValues[pos] : _game.SmallValues[pos], output);
                 output.Enabled = false;
 
                 if (_game.State == ValueGenerator<T>.GenerationPhase.RANDOMIZING)
@@ -446,11 +431,40 @@ namespace Countdown.GameController
                     _spinnerTicker.Start();
                 }
             };
+            output.MouseEnter += (o, e) =>
+            {
+                if (output.Enabled)
+                    output.BackColor = BUTTON_HIGHLIGHTED_BACKGROUND;
+            };
+            output.MouseLeave += (o, e) =>
+            {
+                if (output.Enabled)
+                    output.BackColor = BUTTON_BACKGROUND;
+            };
+            output.Paint += (o, e) =>
+            {
+                if(output.BackColor.Equals(CLICKED_BUTTON_BACKGROUND) || _toggleLabels.Text.Equals(HIDE_VALUES))
+                {
+                    Graphics g = e.Graphics;
+                    T value = isBig ? _game.BigValues[pos] : _game.SmallValues[pos];
+                    Image displayRep;
+                    if (_game.State == ValueGenerator<T>.GenerationPhase.ERROR)
+                        displayRep = _converter.Representer.CreateErrorRepresentation(BUTTON_TEXT, output.Size);
+                    else
+                    {
+                        if (isBig)
+                            displayRep = _converter.Representer.AsRepresentation(value, BUTTON_TEXT, output.Size, _bigMinScale);
+                        else
+                            displayRep = _converter.Representer.AsRepresentation(value, BUTTON_TEXT, output.Size, _smallMinScale);
+                    }
+                    g.DrawImage(displayRep, 0, 0, output.Width, output.Height);
+                }
+            };
 
             return output;
         }
 
-        private static TableLayoutPanel CreateButtonRows(List<Button> entries, int rowAmt)
+        private static TableLayoutPanel CreateButtonRows(List<Panel> entries, int rowAmt)
         {
             if (rowAmt < 1)
                 throw new ArgumentOutOfRangeException(nameof(rowAmt));
@@ -491,7 +505,7 @@ namespace Countdown.GameController
             {
                 for (int c = 0; c < rowAmt; c++)
                 {
-                    Button current = entries[rowAmt * r + c];
+                    Panel current = entries[rowAmt * r + c];
                     output.Controls.Add(current);
                     output.SetRow(current, r);
                     output.SetColumn(current, c);
@@ -513,7 +527,7 @@ namespace Countdown.GameController
                 };
                 for (int i = 0; i < entries.Count % rowAmt; i++)
                 {
-                    Button endVal = entries[entries.Count / rowAmt * rowAmt + i];
+                    Panel endVal = entries[entries.Count / rowAmt * rowAmt + i];
                     extraValues.Controls.Add(endVal);
                     extraValues.SetRow(endVal, 0);
                     extraValues.SetColumn(endVal, i);
@@ -530,17 +544,6 @@ namespace Countdown.GameController
             }
 
             return output;
-        }
-
-        public void RenderOnControl(T? value, Control control)
-        {
-            dynamic? displayRep = _game.State == ValueGenerator<T>.GenerationPhase.ERROR ? _converter.Representer.CreateErrorRepresentation() : _converter.Representer.AsRepresentation(value!);
-            if (displayRep is string)
-                control.Text = displayRep;
-            else if (displayRep is Image)
-                control.BackgroundImage = displayRep;
-            else
-                throw new InvalidDataException("I don't know how to represent data of type " + displayRep?.GetType() ?? "null");
         }
     }
 }
